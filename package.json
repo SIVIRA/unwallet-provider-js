@@ -1,0 +1,13 @@
+{
+  "author": "SIVIRA",
+  "name": "dauth-provider",
+  "description": "dAuth provider for JavaScript",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^4.4.3"
+  }
+}

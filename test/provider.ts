@@ -8,7 +8,6 @@ import * as utils from "./utils";
 
 describe("DAuthProvider", () => {
   let server: utils.TestJsonRpcServer;
-  let provider: DAuthProvider;
 
   before(async () => {
     server = new utils.TestJsonRpcServer();
@@ -17,7 +16,7 @@ describe("DAuthProvider", () => {
 
   describe("request", () => {
     it("failure: provider RPC URL not found", async () => {
-      provider = new DAuthProvider({
+      const provider = new DAuthProvider({
         chainId: 0,
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
@@ -31,7 +30,7 @@ describe("DAuthProvider", () => {
     });
 
     it("success", async () => {
-      provider = new DAuthProvider({
+      const provider = new DAuthProvider({
         chainId: constants.TEST_CHAIN_ID,
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
@@ -43,6 +42,18 @@ describe("DAuthProvider", () => {
           })
         ).toNumber()
       ).to.equal(constants.TEST_CHAIN_ID);
+    });
+
+    it("success: with ethers", async () => {
+      const provider = new ethers.providers.Web3Provider(
+        new DAuthProvider({
+          chainId: constants.TEST_CHAIN_ID,
+          rpc: constants.TEST_PROVIDER_RPC_CONFIG,
+        })
+      );
+
+      const network = await provider.getNetwork();
+      expect(network.chainId).to.equal(constants.TEST_CHAIN_ID);
     });
   });
 

@@ -45,7 +45,7 @@ export class DAuthProvider implements Eip1193Provider {
     this.eventEmitter.removeListener(eventType, listener);
   }
 
-  private setJsonRpcProvider(chainId: number) {
+  private setJsonRpcProvider(chainId: number): void {
     if (!this.config.rpc || !(chainId in this.config.rpc)) {
       this.jsonRpcProvider = null;
       return;

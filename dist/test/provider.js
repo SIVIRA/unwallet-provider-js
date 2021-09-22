@@ -35,14 +35,13 @@ const constants = __importStar(require("./constants"));
 const utils = __importStar(require("./utils"));
 describe("DAuthProvider", () => {
     let server;
-    let provider;
     before(() => __awaiter(void 0, void 0, void 0, function* () {
         server = new utils.TestJsonRpcServer();
         yield server.start();
     }));
     describe("request", () => {
         it("failure: provider RPC URL not found", () => __awaiter(void 0, void 0, void 0, function* () {
-            provider = new src_1.DAuthProvider({
+            const provider = new src_1.DAuthProvider({
                 chainId: 0,
                 rpc: constants.TEST_PROVIDER_RPC_CONFIG,
             });
@@ -51,13 +50,21 @@ describe("DAuthProvider", () => {
             }), "provider RPC URL not found");
         }));
         it("success", () => __awaiter(void 0, void 0, void 0, function* () {
-            provider = new src_1.DAuthProvider({
+            const provider = new src_1.DAuthProvider({
                 chainId: constants.TEST_CHAIN_ID,
                 rpc: constants.TEST_PROVIDER_RPC_CONFIG,
             });
             (0, chai_1.expect)(ethers_1.ethers.BigNumber.from(yield provider.request({
                 method: "eth_chainId",
             })).toNumber()).to.equal(constants.TEST_CHAIN_ID);
+        }));
+        it("success: with ethers", () => __awaiter(void 0, void 0, void 0, function* () {
+            const provider = new ethers_1.ethers.providers.Web3Provider(new src_1.DAuthProvider({
+                chainId: constants.TEST_CHAIN_ID,
+                rpc: constants.TEST_PROVIDER_RPC_CONFIG,
+            }));
+            const network = yield provider.getNetwork();
+            (0, chai_1.expect)(network.chainId).to.equal(constants.TEST_CHAIN_ID);
         }));
     });
     after(() => __awaiter(void 0, void 0, void 0, function* () {

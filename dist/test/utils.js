@@ -31,18 +31,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.expectToBeRejected = exports.MockJsonRpcServer = void 0;
+exports.expectToBeRejected = exports.TestJsonRpcServer = void 0;
 const chai_1 = require("chai");
 const ganache_core_1 = __importDefault(require("ganache-core"));
 const constants = __importStar(require("./constants"));
-class MockJsonRpcServer {
+class TestJsonRpcServer {
     constructor() {
         this.start = () => __awaiter(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => {
                 this.server.on("error", (err) => {
                     reject(err);
                 });
-                this.server.listen(constants.MOCK_JSON_RPC_SERVER_PORT, () => {
+                this.server.listen(constants.TEST_JSON_RPC_SERVER_PORT, () => {
                     resolve();
                 });
             });
@@ -61,7 +61,7 @@ class MockJsonRpcServer {
         this.server = ganache_core_1.default.server();
     }
 }
-exports.MockJsonRpcServer = MockJsonRpcServer;
+exports.TestJsonRpcServer = TestJsonRpcServer;
 const expectToBeRejected = (f, message) => __awaiter(void 0, void 0, void 0, function* () {
     let err;
     try {

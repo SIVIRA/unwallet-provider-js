@@ -37,14 +37,14 @@ describe("DAuthProvider", () => {
     let server;
     let provider;
     before(() => __awaiter(void 0, void 0, void 0, function* () {
-        server = new utils.MockJsonRpcServer();
+        server = new utils.TestJsonRpcServer();
         yield server.start();
     }));
     describe("request", () => {
         it("failure: provider RPC URL not found", () => __awaiter(void 0, void 0, void 0, function* () {
             provider = new src_1.DAuthProvider({
                 chainId: 0,
-                rpc: constants.MOCK_PROVIDER_RPC_CONFIG,
+                rpc: constants.TEST_PROVIDER_RPC_CONFIG,
             });
             yield utils.expectToBeRejected(provider.request({
                 method: "eth_chainId",
@@ -52,12 +52,12 @@ describe("DAuthProvider", () => {
         }));
         it("success", () => __awaiter(void 0, void 0, void 0, function* () {
             provider = new src_1.DAuthProvider({
-                chainId: constants.MOCK_CHAIN_ID,
-                rpc: constants.MOCK_PROVIDER_RPC_CONFIG,
+                chainId: constants.TEST_CHAIN_ID,
+                rpc: constants.TEST_PROVIDER_RPC_CONFIG,
             });
             (0, chai_1.expect)(ethers_1.ethers.BigNumber.from(yield provider.request({
                 method: "eth_chainId",
-            })).toNumber()).to.equal(constants.MOCK_CHAIN_ID);
+            })).toNumber()).to.equal(constants.TEST_CHAIN_ID);
         }));
     });
     after(() => __awaiter(void 0, void 0, void 0, function* () {

@@ -1,4 +1,4 @@
-import { Listener } from "events";
+import { ethers } from "ethers";
 
 export interface Eip1193RequestArguments {
   readonly method: string;
@@ -28,6 +28,20 @@ export type Eip1193EventType =
 
 export interface Eip1193Provider {
   request(args: Eip1193RequestArguments): Promise<unknown>;
-  on(eventType: Eip1193EventType, listener: Listener): void;
-  removeListener(eventType: Eip1193EventType, listener: Listener): void;
+  on(eventType: Eip1193EventType, listener: (...args: any[]) => void): void;
+  removeListener(
+    eventType: Eip1193EventType,
+    listener: (...args: any[]) => void
+  ): void;
 }
+
+export interface RpcConfig {
+  [chainId: number]: string;
+}
+
+export interface ProviderConfig {
+  chainId: number;
+  rpc?: RpcConfig;
+}
+
+export class JsonRpcProvider extends ethers.providers.JsonRpcProvider {}

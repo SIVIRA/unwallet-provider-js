@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { Listener } from "events";
 export interface Eip1193RequestArguments {
     readonly method: string;
     readonly params?: readonly unknown[] | object;
@@ -18,8 +17,8 @@ export interface Eip1193ProviderMessage {
 export declare type Eip1193EventType = "message" | "connect" | "disconnect" | "chainChanged" | "accountsChanged";
 export interface Eip1193Provider {
     request(args: Eip1193RequestArguments): Promise<unknown>;
-    on(eventType: Eip1193EventType, listener: Listener): void;
-    removeListener(eventType: Eip1193EventType, listener: Listener): void;
+    on(eventType: Eip1193EventType, listener: (...args: any[]) => void): void;
+    removeListener(eventType: Eip1193EventType, listener: (...args: any[]) => void): void;
 }
 export interface RpcConfig {
     [chainId: number]: string;

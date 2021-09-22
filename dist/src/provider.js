@@ -19,11 +19,6 @@ class DAuthProvider {
         this.eventEmitter = new events_1.EventEmitter();
         this.setJsonRpcProvider(this.config.chainId);
     }
-    enable() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return [];
-        });
-    }
     request(args) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.jsonRpcProvider) {

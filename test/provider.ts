@@ -7,11 +7,11 @@ import * as constants from "./constants";
 import * as utils from "./utils";
 
 describe("DAuthProvider", () => {
-  let server: utils.MockJsonRpcServer;
+  let server: utils.TestJsonRpcServer;
   let provider: DAuthProvider;
 
   before(async () => {
-    server = new utils.MockJsonRpcServer();
+    server = new utils.TestJsonRpcServer();
     await server.start();
   });
 
@@ -19,7 +19,7 @@ describe("DAuthProvider", () => {
     it("failure: provider RPC URL not found", async () => {
       provider = new DAuthProvider({
         chainId: 0,
-        rpc: constants.MOCK_PROVIDER_RPC_CONFIG,
+        rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
 
       await utils.expectToBeRejected(
@@ -32,8 +32,8 @@ describe("DAuthProvider", () => {
 
     it("success", async () => {
       provider = new DAuthProvider({
-        chainId: constants.MOCK_CHAIN_ID,
-        rpc: constants.MOCK_PROVIDER_RPC_CONFIG,
+        chainId: constants.TEST_CHAIN_ID,
+        rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
 
       expect(
@@ -42,7 +42,7 @@ describe("DAuthProvider", () => {
             method: "eth_chainId",
           })
         ).toNumber()
-      ).to.equal(constants.MOCK_CHAIN_ID);
+      ).to.equal(constants.TEST_CHAIN_ID);
     });
   });
 

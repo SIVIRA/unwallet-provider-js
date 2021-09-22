@@ -3,7 +3,7 @@ import ganache from "ganache-core";
 
 import * as constants from "./constants";
 
-class MockJsonRpcServer {
+class TestJsonRpcServer {
   private server: ganache.Server;
 
   constructor() {
@@ -15,7 +15,7 @@ class MockJsonRpcServer {
       this.server.on("error", (err) => {
         reject(err);
       });
-      this.server.listen(constants.MOCK_JSON_RPC_SERVER_PORT, () => {
+      this.server.listen(constants.TEST_JSON_RPC_SERVER_PORT, () => {
         resolve();
       });
     });
@@ -50,4 +50,4 @@ const expectToBeRejected = async (
   }
 };
 
-export { MockJsonRpcServer, expectToBeRejected };
+export { TestJsonRpcServer, expectToBeRejected };

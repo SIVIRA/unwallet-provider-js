@@ -65,8 +65,18 @@ class DAuthProvider {
                         resolve(this.config.chainId);
                         return;
                     case "eth_requestAccounts":
-                        yield this.connect();
-                        this.accounts = yield this.requestAccounts();
+                        try {
+                            yield this.connect();
+                            this.accounts = yield this.requestAccounts();
+                        }
+                        catch (e) {
+                            reject(e);
+                            return;
+                        }
+                        const connectInfo = {
+                            chainId: `${this.config.chainId}`,
+                        };
+                        this.eventEmitter.emit("connect", connectInfo);
                         resolve(this.accounts);
                         return;
                     default:

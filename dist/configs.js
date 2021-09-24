@@ -10,4 +10,8 @@ exports.dAuthConfigs = {
         baseURL: "https://id-dev.dauth.world",
         wsAPIURL: "wss://ws-api.admin.id-dev.dauth.world",
     },
+    local: {
+        baseURL: "http://localhost:4200",
+        wsAPIURL: "wss://ws-api.admin.id-dev.dauth.world",
+    },
 };

@@ -5,6 +5,7 @@ import {
   DAuthConfig,
   Eip1193EventType,
   Eip1193Provider,
+  Eip1193ProviderConnectInfo,
   Eip1193RequestArguments,
   JsonRpcProvider,
   ProviderConfig,
@@ -77,8 +78,17 @@ export class DAuthProvider implements Eip1193Provider {
             resolve(this.config.chainId as any);
             return;
           case "eth_requestAccounts":
-            await this.connect();
-            this.accounts = await this.requestAccounts();
+            try {
+              await this.connect();
+              this.accounts = await this.requestAccounts();
+            } catch (e) {
+              reject(e);
+              return;
+            }
+            const connectInfo: Eip1193ProviderConnectInfo = {
+              chainId: `${this.config.chainId}`,
+            };
+            this.eventEmitter.emit("connect", connectInfo);
             resolve(this.accounts as any);
             return;
           default:

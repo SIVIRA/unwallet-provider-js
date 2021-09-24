@@ -35,6 +35,11 @@ export interface Eip1193Provider {
   ): void;
 }
 
+export interface DAuthConfig {
+  baseURL: string;
+  wsAPIURL: string;
+}
+
 export interface RpcConfig {
   [chainId: number]: string;
 }
@@ -42,6 +47,7 @@ export interface RpcConfig {
 export interface ProviderConfig {
   chainId: number;
   rpc?: RpcConfig;
+  env?: string;
 }
 
 export class JsonRpcProvider extends ethers.providers.JsonRpcProvider {}

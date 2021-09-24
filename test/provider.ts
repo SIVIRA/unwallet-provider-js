@@ -23,7 +23,8 @@ describe("DAuthProvider", () => {
 
       await utils.expectToBeRejected(
         provider.request({
-          method: "eth_chainId",
+          method: "eth_getTransactionCount",
+          params: [ethers.constants.AddressZero],
         }),
         "provider RPC URL not found"
       );
@@ -38,10 +39,11 @@ describe("DAuthProvider", () => {
       expect(
         ethers.BigNumber.from(
           await provider.request({
-            method: "eth_chainId",
+            method: "eth_getTransactionCount",
+            params: [ethers.constants.AddressZero],
           })
         ).toNumber()
-      ).to.equal(constants.TEST_CHAIN_ID);
+      ).to.equal(0);
     });
 
     it("success: with ethers", async () => {
@@ -52,8 +54,9 @@ describe("DAuthProvider", () => {
         })
       );
 
-      const network = await provider.getNetwork();
-      expect(network.chainId).to.equal(constants.TEST_CHAIN_ID);
+      expect(
+        await provider.getTransactionCount(ethers.constants.AddressZero)
+      ).to.equal(0);
     });
   });
 

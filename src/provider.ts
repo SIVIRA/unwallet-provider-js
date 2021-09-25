@@ -142,7 +142,7 @@ export class DAuthProvider implements Eip1193Provider {
       this.resolve = resolve;
       this.reject = reject;
 
-      const url = new URL(`${this.dAuthConfig.baseURL}/x/authorize`);
+      const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/requestAccounts`);
       url.searchParams.set("connectionID", this.connectionID!);
       this.openWindow(url);
     });

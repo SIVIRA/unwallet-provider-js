@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 
 import { dAuthConfigs } from "./configs";
@@ -14,13 +15,13 @@ import {
 } from "./types";
 
 const signerMethods = [
+  "eth_requestAccounts",
   "eth_accounts",
   "eth_chainId",
-  "eth_requestAccounts",
-  "eth_sendTransaction",
   "eth_sign",
-  "eth_signTransaction",
   "eth_signTypedData",
+  "eth_signTransaction",
+  "eth_sendTransaction",
 ];
 
 export class DAuthProvider implements Eip1193Provider {
@@ -72,14 +73,6 @@ export class DAuthProvider implements Eip1193Provider {
     return new Promise(async (resolve, reject) => {
       if (this.signerMethods.includes(args.method)) {
         switch (args.method) {
-          case "eth_accounts":
-            resolve(this.accounts as any);
-            return;
-
-          case "eth_chainId":
-            resolve(this.config.chainId as any);
-            return;
-
           case "eth_requestAccounts":
             try {
               await this.connect();
@@ -92,6 +85,14 @@ export class DAuthProvider implements Eip1193Provider {
             } catch (e) {
               reject(e);
             }
+            return;
+
+          case "eth_accounts":
+            resolve(this.accounts as any);
+            return;
+
+          case "eth_chainId":
+            resolve(this.config.chainId as any);
             return;
 
           case "eth_sign":
@@ -119,6 +120,18 @@ export class DAuthProvider implements Eip1193Provider {
                 throw new Error("invalid account");
               }
               resolve((await this.ethSignTypedData(params[1])) as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
+          case "eth_signTransaction":
+            try {
+              if (this.accounts === null) {
+                throw new Error("not connected");
+              }
+              const params = this.parseEthSignTransactionParams(args.params);
+              resolve((await this.ethSignTransaction(params[0])) as any);
             } catch (e) {
               reject(e);
             }
@@ -175,10 +188,7 @@ export class DAuthProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-
-      const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/requestAccounts`);
-      url.searchParams.set("connectionID", this.connectionID!);
-      this.openWindow(url);
+      this.openSignerWindow("/x/eth/requestAccounts");
     });
   }
 
@@ -186,11 +196,9 @@ export class DAuthProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-
-      const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/sign`);
-      url.searchParams.set("connectionID", this.connectionID!);
-      url.searchParams.set("message", message);
-      this.openWindow(url);
+      this.openSignerWindow("/x/eth/sign", {
+        message: message,
+      });
     });
   }
 
@@ -198,11 +206,21 @@ export class DAuthProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
+      this.openSignerWindow("/x/eth/signTypedData", {
+        data: JSON.stringify(data),
+      });
+    });
+  }
 
-      const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/signTypedData`);
-      url.searchParams.set("connectionID", this.connectionID!);
-      url.searchParams.set("data", JSON.stringify(data));
-      this.openWindow(url);
+  private ethSignTransaction(
+    transaction: ethers.providers.TransactionRequest
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+      this.openSignerWindow("/x/eth/signTransaction", {
+        transaction: JSON.stringify(transaction),
+      });
     });
   }
 
@@ -230,11 +248,19 @@ export class DAuthProvider implements Eip1193Provider {
     }
   }
 
-  private openWindow(url: URL): void {
+  private openSignerWindow(path: string, params?: any): void {
     const width = screen.width / 2;
     const height = screen.height;
     const left = screen.width / 4;
     const top = 0;
+
+    const url = new URL(`${this.dAuthConfig.baseURL}${path}`);
+    url.searchParams.set("connectionID", this.connectionID!);
+    if (params !== undefined) {
+      for (const key of Object.keys(params)) {
+        url.searchParams.set(key, params[key]);
+      }
+    }
 
     window.open(
       url.toString(),
@@ -301,5 +327,21 @@ export class DAuthProvider implements Eip1193Provider {
     }
 
     return [params[0], params[1]];
+  }
+
+  private parseEthSignTransactionParams(
+    params?: object | readonly unknown[]
+  ): [TransactionRequest] {
+    if (params === undefined) {
+      throw new Error("params undefined");
+    }
+    if (!Array.isArray(params) || params.length !== 1) {
+      throw new Error("invalid params");
+    }
+    if (typeof params[0] !== "object" || Array.isArray(params[0])) {
+      throw new Error("invalid transaction");
+    }
+
+    return [params[0]];
   }
 }

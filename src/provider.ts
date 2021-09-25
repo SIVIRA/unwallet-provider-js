@@ -5,6 +5,7 @@ import { dAuthConfigs } from "./configs";
 import {
   Config,
   DAuthConfig,
+  Eip712TypedData,
   Eip1193EventType,
   Eip1193Provider,
   Eip1193ProviderConnectInfo,
@@ -95,8 +96,29 @@ export class DAuthProvider implements Eip1193Provider {
 
           case "eth_sign":
             try {
+              if (this.accounts === null) {
+                throw new Error("not connected");
+              }
               const params = this.parseEthSignParams(args.params);
+              if (params[0] !== this.accounts[0]) {
+                throw new Error("invalid account");
+              }
               resolve((await this.ethSign(params[1])) as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
+          case "eth_signTypedData":
+            try {
+              if (this.accounts === null) {
+                throw new Error("not connected");
+              }
+              const params = this.parseEthSignTypedDataParams(args.params);
+              if (params[0] !== this.accounts[0]) {
+                throw new Error("invalid account");
+              }
+              resolve((await this.ethSignTypedData(params[1])) as any);
             } catch (e) {
               reject(e);
             }
@@ -172,6 +194,18 @@ export class DAuthProvider implements Eip1193Provider {
     });
   }
 
+  private ethSignTypedData(data: Eip712TypedData): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+
+      const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/signTypedData`);
+      url.searchParams.set("connectionID", this.connectionID!);
+      url.searchParams.set("data", JSON.stringify(data));
+      this.openWindow(url);
+    });
+  }
+
   private getConnectionID(): void {
     this.sendWSMessage({
       action: "getConnectionID",
@@ -226,23 +260,44 @@ export class DAuthProvider implements Eip1193Provider {
   private parseEthSignParams(
     params?: object | readonly unknown[]
   ): [string, string] {
-    if (this.accounts === null) {
-      throw new Error("not connected");
-    }
     if (params === undefined) {
       throw new Error("params undefined");
     }
     if (!Array.isArray(params) || params.length !== 2) {
       throw new Error("invalid params");
     }
-    if (
-      !ethers.utils.isAddress(params[0]) ||
-      ethers.utils.getAddress(params[0]) !== this.accounts[0]
-    ) {
+    if (!ethers.utils.isAddress(params[0])) {
       throw new Error("invalid account");
     }
     if (!ethers.utils.isHexString(params[1])) {
       throw new Error("invalid message");
+    }
+
+    return [params[0], params[1]];
+  }
+
+  private parseEthSignTypedDataParams(
+    params?: object | readonly unknown[]
+  ): [string, Eip712TypedData] {
+    if (params === undefined) {
+      throw new Error("params undefined");
+    }
+    if (!Array.isArray(params) || params.length !== 2) {
+      throw new Error("invalid params");
+    }
+    if (!ethers.utils.isAddress(params[0])) {
+      throw new Error("invalid account");
+    }
+    if (typeof params[1] !== "object" || Array.isArray(params[1])) {
+      throw new Error("invalid typed data");
+    }
+    for (const field of ["types", "domain", "message"]) {
+      if (!(field in params[1])) {
+        throw new Error("invalid typed data");
+      }
+    }
+    if ("EIP712Domain" in params[1].types) {
+      delete params[1].types.EIP712Domain;
     }
 
     return [params[0], params[1]];

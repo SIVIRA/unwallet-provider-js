@@ -80,8 +80,29 @@ class DAuthProvider {
                         return;
                     case "eth_sign":
                         try {
+                            if (this.accounts === null) {
+                                throw new Error("not connected");
+                            }
                             const params = this.parseEthSignParams(args.params);
+                            if (params[0] !== this.accounts[0]) {
+                                throw new Error("invalid account");
+                            }
                             resolve((yield this.ethSign(params[1])));
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
+                        return;
+                    case "eth_signTypedData":
+                        try {
+                            if (this.accounts === null) {
+                                throw new Error("not connected");
+                            }
+                            const params = this.parseEthSignTypedDataParams(args.params);
+                            if (params[0] !== this.accounts[0]) {
+                                throw new Error("invalid account");
+                            }
+                            resolve((yield this.ethSignTypedData(params[1])));
                         }
                         catch (e) {
                             reject(e);
@@ -145,6 +166,16 @@ class DAuthProvider {
             this.openWindow(url);
         });
     }
+    ethSignTypedData(data) {
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+            const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/signTypedData`);
+            url.searchParams.set("connectionID", this.connectionID);
+            url.searchParams.set("data", JSON.stringify(data));
+            this.openWindow(url);
+        });
+    }
     getConnectionID() {
         this.sendWSMessage({
             action: "getConnectionID",
@@ -182,21 +213,40 @@ class DAuthProvider {
         this.eventEmitter.removeListener(eventType, listener);
     }
     parseEthSignParams(params) {
-        if (this.accounts === null) {
-            throw new Error("not connected");
-        }
         if (params === undefined) {
             throw new Error("params undefined");
         }
         if (!Array.isArray(params) || params.length !== 2) {
             throw new Error("invalid params");
         }
-        if (!ethers_1.ethers.utils.isAddress(params[0]) ||
-            ethers_1.ethers.utils.getAddress(params[0]) !== this.accounts[0]) {
+        if (!ethers_1.ethers.utils.isAddress(params[0])) {
             throw new Error("invalid account");
         }
         if (!ethers_1.ethers.utils.isHexString(params[1])) {
             throw new Error("invalid message");
+        }
+        return [params[0], params[1]];
+    }
+    parseEthSignTypedDataParams(params) {
+        if (params === undefined) {
+            throw new Error("params undefined");
+        }
+        if (!Array.isArray(params) || params.length !== 2) {
+            throw new Error("invalid params");
+        }
+        if (!ethers_1.ethers.utils.isAddress(params[0])) {
+            throw new Error("invalid account");
+        }
+        if (typeof params[1] !== "object" || Array.isArray(params[1])) {
+            throw new Error("invalid typed data");
+        }
+        for (const field of ["types", "domain", "message"]) {
+            if (!(field in params[1])) {
+                throw new Error("invalid typed data");
+            }
+        }
+        if ("EIP712Domain" in params[1].types) {
+            delete params[1].types.EIP712Domain;
         }
         return [params[0], params[1]];
     }

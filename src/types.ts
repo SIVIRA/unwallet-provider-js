@@ -44,7 +44,7 @@ export interface RpcConfig {
   [chainId: number]: string;
 }
 
-export interface ProviderConfig {
+export interface Config {
   chainId: number;
   rpc?: RpcConfig;
   env?: string;

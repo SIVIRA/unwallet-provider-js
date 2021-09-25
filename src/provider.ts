@@ -2,28 +2,28 @@ import { EventEmitter } from "events";
 
 import { dAuthConfigs } from "./configs";
 import {
+  Config,
   DAuthConfig,
   Eip1193EventType,
   Eip1193Provider,
   Eip1193ProviderConnectInfo,
   Eip1193RequestArguments,
   JsonRpcProvider,
-  ProviderConfig,
 } from "./types";
 
 const signerMethods = [
   "eth_accounts",
   "eth_chainId",
+  "eth_requestAccounts",
   "eth_sendTransaction",
   "eth_sign",
   "eth_signTransaction",
   "eth_signTypedData",
-  "eth_requestAccounts",
   "personal_sign",
 ];
 
 export class DAuthProvider implements Eip1193Provider {
-  private config: ProviderConfig;
+  private config: Config;
   private dAuthConfig: DAuthConfig;
 
   private eventEmitter: EventEmitter;
@@ -37,7 +37,7 @@ export class DAuthProvider implements Eip1193Provider {
   private resolve: (result: any) => void;
   private reject: (reason: any) => void;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Config) {
     if (!config.env) {
       config.env = "prod";
     }

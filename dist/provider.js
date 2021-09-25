@@ -16,11 +16,11 @@ const types_1 = require("./types");
 const signerMethods = [
     "eth_accounts",
     "eth_chainId",
+    "eth_requestAccounts",
     "eth_sendTransaction",
     "eth_sign",
     "eth_signTransaction",
     "eth_signTypedData",
-    "eth_requestAccounts",
     "personal_sign",
 ];
 class DAuthProvider {

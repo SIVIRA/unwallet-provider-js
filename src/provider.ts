@@ -1,3 +1,4 @@
+import { ethers } from "ethers";
 import { EventEmitter } from "events";
 
 import { dAuthConfigs } from "./configs";
@@ -74,30 +75,42 @@ export class DAuthProvider implements Eip1193Provider {
           case "eth_accounts":
             resolve(this.accounts as any);
             return;
+
           case "eth_chainId":
             resolve(this.config.chainId as any);
             return;
+
           case "eth_requestAccounts":
             try {
               await this.connect();
               this.accounts = await this.requestAccounts();
+              const connectInfo: Eip1193ProviderConnectInfo = {
+                chainId: `${this.config.chainId}`,
+              };
+              this.eventEmitter.emit("connect", connectInfo);
+              resolve(this.accounts as any);
             } catch (e) {
               reject(e);
-              return;
             }
-            const connectInfo: Eip1193ProviderConnectInfo = {
-              chainId: `${this.config.chainId}`,
-            };
-            this.eventEmitter.emit("connect", connectInfo);
-            resolve(this.accounts as any);
             return;
+
+          case "eth_sign":
+            try {
+              const params = this.parseEthSignParams(args.params);
+              resolve((await this.ethSign(params[1])) as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
           default:
-            break; // TODO
+            reject("unsupported method");
+            return;
         }
       }
 
       if (!this.jsonRpcProvider) {
-        reject(new Error("provider RPC URL not found"));
+        reject("provider RPC URL not found");
         return;
       }
 
@@ -148,6 +161,18 @@ export class DAuthProvider implements Eip1193Provider {
     });
   }
 
+  private ethSign(message: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+
+      const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/sign`);
+      url.searchParams.set("connectionID", this.connectionID!);
+      url.searchParams.set("message", message);
+      this.openWindow(url);
+    });
+  }
+
   private getConnectionID(): void {
     this.sendWSMessage({
       action: "getConnectionID",
@@ -161,6 +186,7 @@ export class DAuthProvider implements Eip1193Provider {
   private handleWSMessage(msg: any): void {
     switch (msg.type) {
       case "accounts":
+      case "signature":
         if (msg.data.value === null) {
           this.reject("canceled");
         } else {
@@ -196,5 +222,30 @@ export class DAuthProvider implements Eip1193Provider {
     listener: (...args: any[]) => void
   ): void {
     this.eventEmitter.removeListener(eventType, listener);
+  }
+
+  private parseEthSignParams(
+    params?: object | readonly unknown[]
+  ): [string, string] {
+    if (this.accounts === null) {
+      throw new Error("not connected");
+    }
+    if (params === undefined) {
+      throw new Error("params undefined");
+    }
+    if (!Array.isArray(params) || params.length !== 2) {
+      throw new Error("invalid params");
+    }
+    if (
+      !ethers.utils.isAddress(params[0]) ||
+      ethers.utils.getAddress(params[0]) !== this.accounts[0]
+    ) {
+      throw new Error("invalid account");
+    }
+    if (!ethers.utils.isHexString(params[1])) {
+      throw new Error("invalid message");
+    }
+
+    return [params[0], params[1]];
   }
 }

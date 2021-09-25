@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DAuthProvider = void 0;
+const ethers_1 = require("ethers");
 const events_1 = require("events");
 const configs_1 = require("./configs");
 const types_1 = require("./types");
@@ -68,23 +69,32 @@ class DAuthProvider {
                         try {
                             yield this.connect();
                             this.accounts = yield this.requestAccounts();
+                            const connectInfo = {
+                                chainId: `${this.config.chainId}`,
+                            };
+                            this.eventEmitter.emit("connect", connectInfo);
+                            resolve(this.accounts);
                         }
                         catch (e) {
                             reject(e);
-                            return;
                         }
-                        const connectInfo = {
-                            chainId: `${this.config.chainId}`,
-                        };
-                        this.eventEmitter.emit("connect", connectInfo);
-                        resolve(this.accounts);
+                        return;
+                    case "eth_sign":
+                        try {
+                            const params = this.parseEthSignParams(args.params);
+                            resolve((yield this.ethSign(params[1])));
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
                         return;
                     default:
-                        break; // TODO
+                        reject("unsupported method");
+                        return;
                 }
             }
             if (!this.jsonRpcProvider) {
-                reject(new Error("provider RPC URL not found"));
+                reject("provider RPC URL not found");
                 return;
             }
             resolve(yield this.jsonRpcProvider.send(args.method, args.params ? args.params : []));
@@ -126,6 +136,16 @@ class DAuthProvider {
             this.openWindow(url);
         });
     }
+    ethSign(message) {
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+            const url = new URL(`${this.dAuthConfig.baseURL}/x/eth/sign`);
+            url.searchParams.set("connectionID", this.connectionID);
+            url.searchParams.set("message", message);
+            this.openWindow(url);
+        });
+    }
     getConnectionID() {
         this.sendWSMessage({
             action: "getConnectionID",
@@ -138,6 +158,7 @@ class DAuthProvider {
     handleWSMessage(msg) {
         switch (msg.type) {
             case "accounts":
+            case "signature":
                 if (msg.data.value === null) {
                     this.reject("canceled");
                 }
@@ -160,6 +181,25 @@ class DAuthProvider {
     }
     removeListener(eventType, listener) {
         this.eventEmitter.removeListener(eventType, listener);
+    }
+    parseEthSignParams(params) {
+        if (this.accounts === null) {
+            throw new Error("not connected");
+        }
+        if (params === undefined) {
+            throw new Error("params undefined");
+        }
+        if (!Array.isArray(params) || params.length !== 2) {
+            throw new Error("invalid params");
+        }
+        if (!ethers_1.ethers.utils.isAddress(params[0]) ||
+            ethers_1.ethers.utils.getAddress(params[0]) !== this.accounts[0]) {
+            throw new Error("invalid account");
+        }
+        if (!ethers_1.ethers.utils.isHexString(params[1])) {
+            throw new Error("invalid message");
+        }
+        return [params[0], params[1]];
     }
 }
 exports.DAuthProvider = DAuthProvider;

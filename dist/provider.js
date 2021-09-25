@@ -22,7 +22,6 @@ const signerMethods = [
     "eth_sign",
     "eth_signTransaction",
     "eth_signTypedData",
-    "personal_sign",
 ];
 class DAuthProvider {
     constructor(config) {

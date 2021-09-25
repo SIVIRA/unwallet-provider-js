@@ -20,7 +20,6 @@ const signerMethods = [
   "eth_sign",
   "eth_signTransaction",
   "eth_signTypedData",
-  "personal_sign",
 ];
 
 export class DAuthProvider implements Eip1193Provider {

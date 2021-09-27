@@ -319,7 +319,7 @@ export class DAuthProvider implements Eip1193Provider {
     }
     for (const field of ["types", "domain", "message"]) {
       if (!(field in params[1])) {
-        throw new Error("invalid typed data");
+        throw new Error(`invalid type data: "${field}" undefined`);
       }
     }
     if ("EIP712Domain" in params[1].types) {
@@ -340,6 +340,12 @@ export class DAuthProvider implements Eip1193Provider {
     }
     if (typeof params[0] !== "object" || Array.isArray(params[0])) {
       throw new Error("invalid transaction");
+    }
+    if (!("to" in params[0])) {
+      throw new Error(`invalid transaction: "to" undefined`);
+    }
+    if (!ethers.utils.isAddress(params[0].to)) {
+      throw new Error(`invalid transaction: invalid "to"`);
     }
 
     return [params[0]];

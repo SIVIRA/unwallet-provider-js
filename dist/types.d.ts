@@ -1,4 +1,10 @@
 import { ethers } from "ethers";
+import { TypedDataDomain, TypedDataField } from "@ethersproject/abstract-signer";
+export interface Eip712TypedData {
+    domain: TypedDataDomain;
+    types: Record<string, TypedDataField[]>;
+    message: Record<string, any>;
+}
 export interface Eip1193RequestArguments {
     readonly method: string;
     readonly params?: readonly unknown[] | object;
@@ -27,7 +33,7 @@ export interface DAuthConfig {
 export interface RpcConfig {
     [chainId: number]: string;
 }
-export interface ProviderConfig {
+export interface Config {
     chainId: number;
     rpc?: RpcConfig;
     env?: string;

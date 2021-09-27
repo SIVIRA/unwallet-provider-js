@@ -29,13 +29,13 @@ jobs:
       - name: Test
         run: npm run test
       - name: Slack notification on success
-        if: success()
+        if: github.ref == 'refs/heads/master' && success()
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_TITLE: Success
           SLACK_COLOR: good
       - name: Slack notification on failure
-        if: failure()
+        if: github.ref == 'refs/heads/master' && failure()
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_TITLE: Failure

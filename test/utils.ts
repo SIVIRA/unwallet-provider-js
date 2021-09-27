@@ -38,15 +38,19 @@ const expectToBeRejected = async (
   f: Promise<any>,
   message?: string
 ): Promise<void> => {
-  let err;
   try {
     await f;
+    expect.fail("succeeded");
   } catch (e) {
-    err = e;
-  }
-  expect(err).to.be.an("Error");
-  if (message) {
-    expect(message).to.equal(message);
+    if (message) {
+      if (e instanceof Error) {
+        expect(e.message).to.equal(message);
+      } else if (typeof e === "string") {
+        expect(e).to.equal(message);
+      } else {
+        expect.fail("unexpected error");
+      }
+    }
   }
 };
 

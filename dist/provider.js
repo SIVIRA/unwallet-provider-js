@@ -10,18 +10,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DAuthProvider = void 0;
+const ethers_1 = require("ethers");
 const events_1 = require("events");
 const configs_1 = require("./configs");
 const types_1 = require("./types");
 const signerMethods = [
+    "eth_requestAccounts",
     "eth_accounts",
     "eth_chainId",
-    "eth_sendTransaction",
     "eth_sign",
-    "eth_signTransaction",
     "eth_signTypedData",
-    "eth_requestAccounts",
-    "personal_sign",
+    "eth_signTransaction",
+    "eth_sendTransaction",
 ];
 class DAuthProvider {
     constructor(config) {
@@ -58,33 +58,75 @@ class DAuthProvider {
         return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
             if (this.signerMethods.includes(args.method)) {
                 switch (args.method) {
+                    case "eth_requestAccounts":
+                        try {
+                            yield this.connect();
+                            this.accounts = yield this.requestAccounts();
+                            const connectInfo = {
+                                chainId: `${this.config.chainId}`,
+                            };
+                            this.eventEmitter.emit("connect", connectInfo);
+                            resolve(this.accounts);
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
+                        return;
                     case "eth_accounts":
                         resolve(this.accounts);
                         return;
                     case "eth_chainId":
                         resolve(this.config.chainId);
                         return;
-                    case "eth_requestAccounts":
+                    case "eth_sign":
                         try {
-                            yield this.connect();
-                            this.accounts = yield this.requestAccounts();
+                            if (this.accounts === null) {
+                                throw new Error("not connected");
+                            }
+                            const params = this.parseEthSignParams(args.params);
+                            if (params[0] !== this.accounts[0]) {
+                                throw new Error("invalid account");
+                            }
+                            resolve((yield this.ethSign(params[1])));
                         }
                         catch (e) {
                             reject(e);
-                            return;
                         }
-                        const connectInfo = {
-                            chainId: `${this.config.chainId}`,
-                        };
-                        this.eventEmitter.emit("connect", connectInfo);
-                        resolve(this.accounts);
+                        return;
+                    case "eth_signTypedData":
+                        try {
+                            if (this.accounts === null) {
+                                throw new Error("not connected");
+                            }
+                            const params = this.parseEthSignTypedDataParams(args.params);
+                            if (params[0] !== this.accounts[0]) {
+                                throw new Error("invalid account");
+                            }
+                            resolve((yield this.ethSignTypedData(params[1])));
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
+                        return;
+                    case "eth_signTransaction":
+                        try {
+                            if (this.accounts === null) {
+                                throw new Error("not connected");
+                            }
+                            const params = this.parseEthSignTransactionParams(args.params);
+                            resolve((yield this.ethSignTransaction(params[0])));
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
                         return;
                     default:
-                        break; // TODO
+                        reject("unsupported method");
+                        return;
                 }
             }
             if (!this.jsonRpcProvider) {
-                reject(new Error("provider RPC URL not found"));
+                reject("provider RPC URL not found");
                 return;
             }
             resolve(yield this.jsonRpcProvider.send(args.method, args.params ? args.params : []));
@@ -121,9 +163,34 @@ class DAuthProvider {
         return new Promise((resolve, reject) => {
             this.resolve = resolve;
             this.reject = reject;
-            const url = new URL(`${this.dAuthConfig.baseURL}/x/authorize`);
-            url.searchParams.set("connectionID", this.connectionID);
-            this.openWindow(url);
+            this.openSignerWindow("/x/eth/requestAccounts");
+        });
+    }
+    ethSign(message) {
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+            this.openSignerWindow("/x/eth/sign", {
+                message: message,
+            });
+        });
+    }
+    ethSignTypedData(data) {
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+            this.openSignerWindow("/x/eth/signTypedData", {
+                data: JSON.stringify(data),
+            });
+        });
+    }
+    ethSignTransaction(transaction) {
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+            this.openSignerWindow("/x/eth/signTransaction", {
+                transaction: JSON.stringify(transaction),
+            });
         });
     }
     getConnectionID() {
@@ -138,6 +205,7 @@ class DAuthProvider {
     handleWSMessage(msg) {
         switch (msg.type) {
             case "accounts":
+            case "signature":
                 if (msg.data.value === null) {
                     this.reject("canceled");
                 }
@@ -148,11 +216,18 @@ class DAuthProvider {
                 break;
         }
     }
-    openWindow(url) {
+    openSignerWindow(path, params) {
         const width = screen.width / 2;
         const height = screen.height;
         const left = screen.width / 4;
         const top = 0;
+        const url = new URL(`${this.dAuthConfig.baseURL}${path}`);
+        url.searchParams.set("connectionID", this.connectionID);
+        if (params !== undefined) {
+            for (const key of Object.keys(params)) {
+                url.searchParams.set(key, params[key]);
+            }
+        }
         window.open(url.toString(), "_blank", `width=${width},height=${height},left=${left},top=${top}`);
     }
     on(eventType, listener) {
@@ -160,6 +235,56 @@ class DAuthProvider {
     }
     removeListener(eventType, listener) {
         this.eventEmitter.removeListener(eventType, listener);
+    }
+    parseEthSignParams(params) {
+        if (params === undefined) {
+            throw new Error("params undefined");
+        }
+        if (!Array.isArray(params) || params.length !== 2) {
+            throw new Error("invalid params");
+        }
+        if (!ethers_1.ethers.utils.isAddress(params[0])) {
+            throw new Error("invalid account");
+        }
+        if (!ethers_1.ethers.utils.isHexString(params[1])) {
+            throw new Error("invalid message");
+        }
+        return [params[0], params[1]];
+    }
+    parseEthSignTypedDataParams(params) {
+        if (params === undefined) {
+            throw new Error("params undefined");
+        }
+        if (!Array.isArray(params) || params.length !== 2) {
+            throw new Error("invalid params");
+        }
+        if (!ethers_1.ethers.utils.isAddress(params[0])) {
+            throw new Error("invalid account");
+        }
+        if (typeof params[1] !== "object" || Array.isArray(params[1])) {
+            throw new Error("invalid typed data");
+        }
+        for (const field of ["types", "domain", "message"]) {
+            if (!(field in params[1])) {
+                throw new Error("invalid typed data");
+            }
+        }
+        if ("EIP712Domain" in params[1].types) {
+            delete params[1].types.EIP712Domain;
+        }
+        return [params[0], params[1]];
+    }
+    parseEthSignTransactionParams(params) {
+        if (params === undefined) {
+            throw new Error("params undefined");
+        }
+        if (!Array.isArray(params) || params.length !== 1) {
+            throw new Error("invalid params");
+        }
+        if (typeof params[0] !== "object" || Array.isArray(params[0])) {
+            throw new Error("invalid transaction");
+        }
+        return [params[0]];
     }
 }
 exports.DAuthProvider = DAuthProvider;

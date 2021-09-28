@@ -137,6 +137,18 @@ export class DAuthProvider implements Eip1193Provider {
             }
             return;
 
+          case "eth_sendTransaction":
+            try {
+              if (this.accounts === null) {
+                throw new Error("not connected");
+              }
+              const params = this.parseEthSendTransactionParams(args.params);
+              resolve((await this.ethSendTransaction(params[0])) as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
           default:
             reject("unsupported method");
             return;
@@ -224,6 +236,18 @@ export class DAuthProvider implements Eip1193Provider {
     });
   }
 
+  private ethSendTransaction(
+    transaction: ethers.providers.TransactionRequest
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+      this.openSignerWindow("/x/eth/sendTransaction", {
+        transaction: JSON.stringify(transaction),
+      });
+    });
+  }
+
   private getConnectionID(): void {
     this.sendWSMessage({
       action: "getConnectionID",
@@ -238,6 +262,8 @@ export class DAuthProvider implements Eip1193Provider {
     switch (msg.type) {
       case "accounts":
       case "signature":
+      case "transaction":
+      case "transactionHash":
         if (msg.data.value === null) {
           this.reject("canceled");
         } else {
@@ -330,6 +356,18 @@ export class DAuthProvider implements Eip1193Provider {
   }
 
   private parseEthSignTransactionParams(
+    params?: object | readonly unknown[]
+  ): [TransactionRequest] {
+    return this.parseEthTransactionParams(params);
+  }
+
+  private parseEthSendTransactionParams(
+    params?: object | readonly unknown[]
+  ): [TransactionRequest] {
+    return this.parseEthTransactionParams(params);
+  }
+
+  private parseEthTransactionParams(
     params?: object | readonly unknown[]
   ): [TransactionRequest] {
     if (params === undefined) {

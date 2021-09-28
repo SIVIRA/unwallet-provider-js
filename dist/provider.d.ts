@@ -20,6 +20,7 @@ export declare class DAuthProvider implements Eip1193Provider {
     private ethSign;
     private ethSignTypedData;
     private ethSignTransaction;
+    private ethSendTransaction;
     private getConnectionID;
     private sendWSMessage;
     private handleWSMessage;
@@ -29,5 +30,7 @@ export declare class DAuthProvider implements Eip1193Provider {
     private parseEthSignParams;
     private parseEthSignTypedDataParams;
     private parseEthSignTransactionParams;
+    private parseEthSendTransactionParams;
+    private parseEthTransactionParams;
 }
 //# sourceMappingURL=provider.d.ts.map

@@ -385,6 +385,14 @@ export class DAuthProvider implements Eip1193Provider {
     if (!ethers.utils.isAddress(params[0].to)) {
       throw new Error(`invalid transaction: invalid "to"`);
     }
+    for (const field of ["gasPrice", "gasLimit"]) {
+      if (
+        field in params[0] &&
+        !ethers.BigNumber.isBigNumber(params[0][field])
+      ) {
+        throw new Error(`invalid transaction: invalid "${field}"`);
+      }
+    }
 
     return [params[0]];
   }

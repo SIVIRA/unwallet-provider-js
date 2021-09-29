@@ -137,6 +137,18 @@ export class DAuthProvider implements Eip1193Provider {
             }
             return;
 
+          case "eth_sendTransaction":
+            try {
+              if (this.accounts === null) {
+                throw new Error("not connected");
+              }
+              const params = this.parseEthSendTransactionParams(args.params);
+              resolve((await this.ethSendTransaction(params[0])) as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
           default:
             reject("unsupported method");
             return;
@@ -224,6 +236,18 @@ export class DAuthProvider implements Eip1193Provider {
     });
   }
 
+  private ethSendTransaction(
+    transaction: ethers.providers.TransactionRequest
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+      this.openSignerWindow("/x/eth/sendTransaction", {
+        transaction: JSON.stringify(transaction),
+      });
+    });
+  }
+
   private getConnectionID(): void {
     this.sendWSMessage({
       action: "getConnectionID",
@@ -238,6 +262,8 @@ export class DAuthProvider implements Eip1193Provider {
     switch (msg.type) {
       case "accounts":
       case "signature":
+      case "transaction":
+      case "transactionHash":
         if (msg.data.value === null) {
           this.reject("canceled");
         } else {
@@ -319,7 +345,7 @@ export class DAuthProvider implements Eip1193Provider {
     }
     for (const field of ["types", "domain", "message"]) {
       if (!(field in params[1])) {
-        throw new Error("invalid typed data");
+        throw new Error(`invalid type data: "${field}" undefined`);
       }
     }
     if ("EIP712Domain" in params[1].types) {
@@ -332,6 +358,18 @@ export class DAuthProvider implements Eip1193Provider {
   private parseEthSignTransactionParams(
     params?: object | readonly unknown[]
   ): [TransactionRequest] {
+    return this.parseEthTransactionParams(params);
+  }
+
+  private parseEthSendTransactionParams(
+    params?: object | readonly unknown[]
+  ): [TransactionRequest] {
+    return this.parseEthTransactionParams(params);
+  }
+
+  private parseEthTransactionParams(
+    params?: object | readonly unknown[]
+  ): [TransactionRequest] {
     if (params === undefined) {
       throw new Error("params undefined");
     }
@@ -340,6 +378,20 @@ export class DAuthProvider implements Eip1193Provider {
     }
     if (typeof params[0] !== "object" || Array.isArray(params[0])) {
       throw new Error("invalid transaction");
+    }
+    if (!("to" in params[0])) {
+      throw new Error(`invalid transaction: "to" undefined`);
+    }
+    if (!ethers.utils.isAddress(params[0].to)) {
+      throw new Error(`invalid transaction: invalid "to"`);
+    }
+    for (const field of ["gasPrice", "gasLimit"]) {
+      if (
+        field in params[0] &&
+        !ethers.BigNumber.isBigNumber(params[0][field])
+      ) {
+        throw new Error(`invalid transaction: invalid "${field}"`);
+      }
     }
 
     return [params[0]];

@@ -120,6 +120,18 @@ class DAuthProvider {
                             reject(e);
                         }
                         return;
+                    case "eth_sendTransaction":
+                        try {
+                            if (this.accounts === null) {
+                                throw new Error("not connected");
+                            }
+                            const params = this.parseEthSendTransactionParams(args.params);
+                            resolve((yield this.ethSendTransaction(params[0])));
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
+                        return;
                     default:
                         reject("unsupported method");
                         return;
@@ -193,6 +205,15 @@ class DAuthProvider {
             });
         });
     }
+    ethSendTransaction(transaction) {
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+            this.openSignerWindow("/x/eth/sendTransaction", {
+                transaction: JSON.stringify(transaction),
+            });
+        });
+    }
     getConnectionID() {
         this.sendWSMessage({
             action: "getConnectionID",
@@ -206,6 +227,8 @@ class DAuthProvider {
         switch (msg.type) {
             case "accounts":
             case "signature":
+            case "transaction":
+            case "transactionHash":
                 if (msg.data.value === null) {
                     this.reject("canceled");
                 }
@@ -266,7 +289,7 @@ class DAuthProvider {
         }
         for (const field of ["types", "domain", "message"]) {
             if (!(field in params[1])) {
-                throw new Error("invalid typed data");
+                throw new Error(`invalid type data: "${field}" undefined`);
             }
         }
         if ("EIP712Domain" in params[1].types) {
@@ -275,6 +298,12 @@ class DAuthProvider {
         return [params[0], params[1]];
     }
     parseEthSignTransactionParams(params) {
+        return this.parseEthTransactionParams(params);
+    }
+    parseEthSendTransactionParams(params) {
+        return this.parseEthTransactionParams(params);
+    }
+    parseEthTransactionParams(params) {
         if (params === undefined) {
             throw new Error("params undefined");
         }
@@ -283,6 +312,18 @@ class DAuthProvider {
         }
         if (typeof params[0] !== "object" || Array.isArray(params[0])) {
             throw new Error("invalid transaction");
+        }
+        if (!("to" in params[0])) {
+            throw new Error(`invalid transaction: "to" undefined`);
+        }
+        if (!ethers_1.ethers.utils.isAddress(params[0].to)) {
+            throw new Error(`invalid transaction: invalid "to"`);
+        }
+        for (const field of ["gasPrice", "gasLimit"]) {
+            if (field in params[0] &&
+                !ethers_1.ethers.BigNumber.isBigNumber(params[0][field])) {
+                throw new Error(`invalid transaction: invalid "${field}"`);
+            }
         }
         return [params[0]];
     }

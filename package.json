@@ -1,9 +1,14 @@
 {
-  "author": "SIVIRA",
   "name": "dauth-provider",
-  "description": "dAuth provider for JavaScript",
   "version": "0.1.0",
+  "description": "dAuth provider for JavaScript",
+  "license": "MIT",
+  "author": "SIVIRA",
   "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/SIVIRA/dauth-provider-js.git"
+  },
   "scripts": {
     "build": "tsc",
     "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' mocha -r ts-node/register test/**/*.ts"

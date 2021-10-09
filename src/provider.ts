@@ -126,15 +126,9 @@ export class DAuthProvider implements Eip1193Provider {
             return;
 
           case "eth_signTransaction":
-            try {
-              if (this.accounts === null) {
-                throw new Error("not connected");
-              }
-              const params = this.parseEthSignTransactionParams(args.params);
-              resolve((await this.ethSignTransaction(params[0])) as any);
-            } catch (e) {
-              reject(e);
-            }
+            reject(
+              "eth_signTransaction is not supported (reason: https://github.com/MetaMask/metamask-extension/issues/2506#issuecomment-388575922)"
+            );
             return;
 
           case "eth_sendTransaction":
@@ -224,18 +218,6 @@ export class DAuthProvider implements Eip1193Provider {
     });
   }
 
-  private ethSignTransaction(
-    transaction: ethers.providers.TransactionRequest
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-      this.openSignerWindow("/x/eth/signTransaction", {
-        transaction: JSON.stringify(transaction),
-      });
-    });
-  }
-
   private ethSendTransaction(
     transaction: ethers.providers.TransactionRequest
   ): Promise<string> {
@@ -262,7 +244,6 @@ export class DAuthProvider implements Eip1193Provider {
     switch (msg.type) {
       case "accounts":
       case "signature":
-      case "transaction":
       case "transactionHash":
         if (msg.data.value === null) {
           this.reject("canceled");
@@ -355,19 +336,7 @@ export class DAuthProvider implements Eip1193Provider {
     return [params[0], params[1]];
   }
 
-  private parseEthSignTransactionParams(
-    params?: object | readonly unknown[]
-  ): [TransactionRequest] {
-    return this.parseEthTransactionParams(params);
-  }
-
   private parseEthSendTransactionParams(
-    params?: object | readonly unknown[]
-  ): [TransactionRequest] {
-    return this.parseEthTransactionParams(params);
-  }
-
-  private parseEthTransactionParams(
     params?: object | readonly unknown[]
   ): [TransactionRequest] {
     if (params === undefined) {

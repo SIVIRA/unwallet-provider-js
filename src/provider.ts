@@ -46,8 +46,8 @@ export class DAuthProvider implements Eip1193Provider {
     if (config.env === undefined) {
       config.env = "prod";
     }
-    if (config.allowAccountCaching === undefined) {
-      config.allowAccountCaching = false;
+    if (config.allowAccountsCaching === undefined) {
+      config.allowAccountsCaching = false;
     }
 
     if (!(config.env in dAuthConfigs)) {
@@ -60,7 +60,7 @@ export class DAuthProvider implements Eip1193Provider {
     this.eventEmitter = new EventEmitter();
     this.setJsonRpcProvider(config.chainId);
 
-    if (config.allowAccountCaching) {
+    if (config.allowAccountsCaching) {
       this.accounts = this.getAccountsCache();
     }
 
@@ -90,7 +90,7 @@ export class DAuthProvider implements Eip1193Provider {
             try {
               await this.connect();
               this.accounts = await this.requestAccounts();
-              if (this.config.allowAccountCaching) {
+              if (this.config.allowAccountsCaching) {
                 this.setAccountsCache(this.accounts);
               }
               resolve(this.accounts as any);

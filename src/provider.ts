@@ -26,6 +26,8 @@ const signerMethods = [
 ];
 
 export class DAuthProvider implements Eip1193Provider {
+  private ACCOUNTS_CACHE_KEY = "dAuth_accounts";
+
   private config: Config;
   private dAuthConfig: DAuthConfig;
 
@@ -41,17 +43,27 @@ export class DAuthProvider implements Eip1193Provider {
   private reject: (reason: any) => void;
 
   constructor(config: Config) {
-    if (!config.env) {
+    if (config.env === undefined) {
       config.env = "prod";
     }
+    if (config.allowAccountCaching === undefined) {
+      config.allowAccountCaching = false;
+    }
+
     if (!(config.env in dAuthConfigs)) {
       throw new Error("invalid env");
     }
 
     this.config = config;
     this.dAuthConfig = dAuthConfigs[config.env!];
+
     this.eventEmitter = new EventEmitter();
     this.setJsonRpcProvider(config.chainId);
+
+    if (config.allowAccountCaching) {
+      this.accounts = this.getAccountsCache();
+    }
+
     this.resolve = (result: any) => {};
     this.reject = (reason: any) => {};
   }
@@ -78,6 +90,9 @@ export class DAuthProvider implements Eip1193Provider {
             try {
               await this.connect();
               this.accounts = await this.requestAccounts();
+              if (this.config.allowAccountCaching) {
+                this.setAccountsCache(this.accounts);
+              }
               resolve(this.accounts as any);
             } catch (e) {
               reject(e);
@@ -158,6 +173,11 @@ export class DAuthProvider implements Eip1193Provider {
     return (await this.request({
       method: "eth_requestAccounts",
     })) as string[];
+  }
+
+  public async disable(): Promise<void> {
+    this.disconnect();
+    this.removeAccountsCache();
   }
 
   private isConnected(): boolean {
@@ -373,5 +393,22 @@ export class DAuthProvider implements Eip1193Provider {
     }
 
     return [params[0]];
+  }
+
+  private getAccountsCache(): string[] | null {
+    const accounts = localStorage.getItem(this.ACCOUNTS_CACHE_KEY);
+
+    return accounts !== null ? JSON.parse(accounts) : null;
+  }
+
+  private setAccountsCache(accounts: string[]): void {
+    localStorage.setItem(
+      this.ACCOUNTS_CACHE_KEY,
+      JSON.stringify(this.accounts)
+    );
+  }
+
+  private removeAccountsCache(): void {
+    localStorage.removeItem(this.ACCOUNTS_CACHE_KEY);
   }
 }

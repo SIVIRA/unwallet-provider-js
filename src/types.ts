@@ -58,6 +58,7 @@ export interface Config {
   chainId: number;
   rpc?: RpcConfig;
   env?: string;
+  allowAccountsCaching?: boolean;
 }
 
 export class JsonRpcProvider extends ethers.providers.JsonRpcProvider {}

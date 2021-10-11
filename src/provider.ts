@@ -3,6 +3,7 @@ import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 
 import { dAuthConfigs } from "./configs";
+import { providerRpcErrorDisconnected } from "./errors";
 import {
   Config,
   DAuthConfig,
@@ -25,6 +26,8 @@ const signerMethods = [
 ];
 
 export class DAuthProvider implements Eip1193Provider {
+  private ACCOUNTS_CACHE_KEY = "dAuth_accounts";
+
   private config: Config;
   private dAuthConfig: DAuthConfig;
 
@@ -40,17 +43,27 @@ export class DAuthProvider implements Eip1193Provider {
   private reject: (reason: any) => void;
 
   constructor(config: Config) {
-    if (!config.env) {
+    if (config.env === undefined) {
       config.env = "prod";
     }
+    if (config.allowAccountsCaching === undefined) {
+      config.allowAccountsCaching = false;
+    }
+
     if (!(config.env in dAuthConfigs)) {
       throw new Error("invalid env");
     }
 
     this.config = config;
     this.dAuthConfig = dAuthConfigs[config.env!];
+
     this.eventEmitter = new EventEmitter();
     this.setJsonRpcProvider(config.chainId);
+
+    if (config.allowAccountsCaching) {
+      this.accounts = this.getAccountsCache();
+    }
+
     this.resolve = (result: any) => {};
     this.reject = (reason: any) => {};
   }
@@ -77,10 +90,9 @@ export class DAuthProvider implements Eip1193Provider {
             try {
               await this.connect();
               this.accounts = await this.requestAccounts();
-              const connectInfo: Eip1193ProviderConnectInfo = {
-                chainId: `${this.config.chainId}`,
-              };
-              this.eventEmitter.emit("connect", connectInfo);
+              if (this.config.allowAccountsCaching) {
+                this.setAccountsCache(this.accounts);
+              }
               resolve(this.accounts as any);
             } catch (e) {
               reject(e);
@@ -97,13 +109,10 @@ export class DAuthProvider implements Eip1193Provider {
 
           case "eth_sign":
             try {
-              if (this.accounts === null) {
-                throw new Error("not connected");
+              if (!this.isConnected()) {
+                await this.connect();
               }
               const params = this.parseEthSignParams(args.params);
-              if (params[0] !== this.accounts[0]) {
-                throw new Error("invalid account");
-              }
               resolve((await this.ethSign(params[1])) as any);
             } catch (e) {
               reject(e);
@@ -112,13 +121,10 @@ export class DAuthProvider implements Eip1193Provider {
 
           case "eth_signTypedData":
             try {
-              if (this.accounts === null) {
-                throw new Error("not connected");
+              if (!this.isConnected()) {
+                await this.connect();
               }
               const params = this.parseEthSignTypedDataParams(args.params);
-              if (params[0] !== this.accounts[0]) {
-                throw new Error("invalid account");
-              }
               resolve((await this.ethSignTypedData(params[1])) as any);
             } catch (e) {
               reject(e);
@@ -133,8 +139,8 @@ export class DAuthProvider implements Eip1193Provider {
 
           case "eth_sendTransaction":
             try {
-              if (this.accounts === null) {
-                throw new Error("not connected");
+              if (!this.isConnected()) {
+                await this.connect();
               }
               const params = this.parseEthSendTransactionParams(args.params);
               resolve((await this.ethSendTransaction(params[0])) as any);
@@ -169,6 +175,15 @@ export class DAuthProvider implements Eip1193Provider {
     })) as string[];
   }
 
+  public async disable(): Promise<void> {
+    this.disconnect();
+    this.removeAccountsCache();
+  }
+
+  private isConnected(): boolean {
+    return this.ws !== null && this.connectionID !== null;
+  }
+
   private connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.dAuthConfig.wsAPIURL);
@@ -182,12 +197,26 @@ export class DAuthProvider implements Eip1193Provider {
         const msg = JSON.parse(event.data);
         if (msg.type === "connectionID") {
           this.connectionID = msg.data.value;
+
+          const connectInfo: Eip1193ProviderConnectInfo = {
+            chainId: `${this.config.chainId}`,
+          };
+          this.eventEmitter.emit("connect", connectInfo);
+
           resolve();
           return;
         }
         this.handleWSMessage(msg);
       };
     });
+  }
+
+  private disconnect(): void {
+    this.ws = null;
+    this.connectionID = null;
+    this.accounts = null;
+
+    this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
   private requestAccounts(): Promise<string[]> {
@@ -364,5 +393,22 @@ export class DAuthProvider implements Eip1193Provider {
     }
 
     return [params[0]];
+  }
+
+  private getAccountsCache(): string[] | null {
+    const accounts = localStorage.getItem(this.ACCOUNTS_CACHE_KEY);
+
+    return accounts !== null ? JSON.parse(accounts) : null;
+  }
+
+  private setAccountsCache(accounts: string[]): void {
+    localStorage.setItem(
+      this.ACCOUNTS_CACHE_KEY,
+      JSON.stringify(this.accounts)
+    );
+  }
+
+  private removeAccountsCache(): void {
+    localStorage.removeItem(this.ACCOUNTS_CACHE_KEY);
   }
 }

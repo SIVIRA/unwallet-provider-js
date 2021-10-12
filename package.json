@@ -1,6 +1,6 @@
 {
   "name": "dauth-provider",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "dAuth provider for JavaScript",
   "license": "MIT",
   "author": "SIVIRA",

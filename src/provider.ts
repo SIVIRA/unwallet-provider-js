@@ -21,6 +21,7 @@ const signerMethods = [
   "eth_chainId",
   "eth_sign",
   "eth_signTypedData",
+  "eth_signTypedData_v4",
   "eth_signTransaction",
   "eth_sendTransaction",
 ];
@@ -126,6 +127,18 @@ export class DAuthProvider implements Eip1193Provider {
               }
               const params = this.parseEthSignTypedDataParams(args.params);
               resolve((await this.ethSignTypedData(params[1])) as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
+          case "eth_signTypedData_v4":
+            try {
+              if (!this.isConnected()) {
+                await this.connect();
+              }
+              const params = this.parseEthSignTypedDataV4Params(args.params);
+              resolve((await this.ethSignTypedDataV4(params[1])) as any);
             } catch (e) {
               reject(e);
             }
@@ -247,6 +260,16 @@ export class DAuthProvider implements Eip1193Provider {
     });
   }
 
+  private ethSignTypedDataV4(data: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+      this.openSignerWindow("/x/eth/signTypedData", {
+        data: data,
+      });
+    });
+  }
+
   private ethSendTransaction(
     transaction: ethers.providers.TransactionRequest
   ): Promise<string> {
@@ -363,6 +386,41 @@ export class DAuthProvider implements Eip1193Provider {
     }
 
     return [params[0], params[1]];
+  }
+
+  private parseEthSignTypedDataV4Params(
+    params?: object | readonly unknown[]
+  ): [string, string] {
+    if (params === undefined) {
+      throw new Error("params undefined");
+    }
+    if (!Array.isArray(params) || params.length !== 2) {
+      throw new Error("invalid params");
+    }
+    if (!ethers.utils.isAddress(params[0])) {
+      throw new Error("invalid account");
+    }
+    if (typeof params[1] !== "string") {
+      throw new Error("invalid typed data");
+    }
+
+    let typedData;
+    try {
+      typedData = JSON.parse(params[1]);
+    } catch (e) {
+      throw new Error("invalid typed data");
+    }
+
+    for (const field of ["types", "domain", "message"]) {
+      if (!(field in typedData)) {
+        throw new Error(`invalid type data: "${field}" undefined`);
+      }
+    }
+    if ("EIP712Domain" in typedData.types) {
+      delete typedData.types.EIP712Domain;
+    }
+
+    return [params[0], JSON.stringify(typedData)];
   }
 
   private parseEthSendTransactionParams(

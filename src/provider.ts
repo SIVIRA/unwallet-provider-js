@@ -3,7 +3,11 @@ import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 
 import { dAuthConfigs } from "./configs";
-import { providerRpcErrorDisconnected } from "./errors";
+import {
+  providerRpcErrorRejected,
+  providerRpcErrorUnsupported,
+  providerRpcErrorDisconnected,
+} from "./errors";
 import {
   Config,
   DAuthConfig,
@@ -145,9 +149,10 @@ export class DAuthProvider implements Eip1193Provider {
             return;
 
           case "eth_signTransaction":
-            reject(
-              "eth_signTransaction is not supported (reason: https://github.com/MetaMask/metamask-extension/issues/2506#issuecomment-388575922)"
-            );
+            const err = providerRpcErrorUnsupported;
+            err.message +=
+              " (see https://github.com/MetaMask/metamask-extension/issues/2506#issuecomment-388575922)";
+            reject(err);
             return;
 
           case "eth_sendTransaction":
@@ -163,7 +168,7 @@ export class DAuthProvider implements Eip1193Provider {
             return;
 
           default:
-            reject("unsupported method");
+            reject(providerRpcErrorUnsupported);
             return;
         }
       }
@@ -298,7 +303,7 @@ export class DAuthProvider implements Eip1193Provider {
       case "signature":
       case "transactionHash":
         if (msg.data.value === null) {
-          this.reject("canceled");
+          this.reject(providerRpcErrorRejected);
         } else {
           this.resolve(msg.data.value);
         }

@@ -44,8 +44,8 @@ export class DAuthProvider implements Eip1193Provider {
   private connectionID: string | null = null;
   private accounts: string[] | null = null;
 
-  private resolve: (result: any) => void;
-  private reject: (reason: any) => void;
+  private resolve: ((result: any) => void) | null = null;
+  private reject: ((reason: any) => void) | null = null;
 
   constructor(config: Config) {
     if (config.env === undefined) {
@@ -69,12 +69,11 @@ export class DAuthProvider implements Eip1193Provider {
       this.accounts = this.getAccountsCache();
     }
 
-    this.resolve = (result: any) => {};
-    this.reject = (reason: any) => {};
+    this.initPromiseArgs();
   }
 
   private initPromiseArgs(): void {
-    this.resolve = (result: string) => {};
+    this.resolve = (result: any) => {};
     this.reject = (reason: any) => {};
   }
 
@@ -294,7 +293,7 @@ export class DAuthProvider implements Eip1193Provider {
   }
 
   private sendWSMessage(msg: any): void {
-    this.ws?.send(JSON.stringify(msg));
+    this.ws!.send(JSON.stringify(msg));
   }
 
   private handleWSMessage(msg: any): void {
@@ -303,9 +302,9 @@ export class DAuthProvider implements Eip1193Provider {
       case "signature":
       case "transactionHash":
         if (msg.data.value === null) {
-          this.reject(providerRpcErrorRejected);
+          this.reject!(providerRpcErrorRejected);
         } else {
-          this.resolve(msg.data.value);
+          this.resolve!(msg.data.value);
         }
         this.initPromiseArgs();
         break;

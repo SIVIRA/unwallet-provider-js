@@ -81,6 +81,10 @@ export class DAuthProvider implements Eip1193Provider {
   }
 
   private initWindowOpener(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     this.windowOpener = window.document.createElement("div");
     this.windowOpener.id = "dauth-provider--window-opener";
     this.windowOpener.style.backgroundColor = "#0093a5";

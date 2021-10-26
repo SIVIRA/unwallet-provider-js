@@ -6,7 +6,10 @@ export class WindowOpener {
   private action: HTMLDivElement;
 
   constructor() {
+    const id = "dauth-provider--window-opener";
+
     this.dialog = window.document.createElement("div");
+    this.dialog.id = id;
     this.dialog.style.backgroundColor = `#fff`;
     this.dialog.style.borderRadius = `8px`;
     this.dialog.style.boxShadow = `0 11px 15px -7px rgb(0 0 0 / 20%), 0 24px 38px 3px rgb(0 0 0 / 14%), 0 9px 46px 8px rgb(0 0 0 / 12%)`;
@@ -73,6 +76,12 @@ export class WindowOpener {
     this.dialog.appendChild(this.action);
 
     window.document.body.appendChild(this.dialog);
+
+    window.document.addEventListener("click", (ev: MouseEvent) => {
+      if (!(ev.target as HTMLElement).closest(`#${id}`)) {
+        this.hideDialog();
+      }
+    });
   }
 
   public showDialog(): void {

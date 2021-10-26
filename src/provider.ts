@@ -18,6 +18,7 @@ import {
   Eip1193RequestArguments,
   JsonRpcProvider,
 } from "./types";
+import { WindowOpener } from "./window-opener";
 
 const signerMethods = [
   "eth_requestAccounts",
@@ -47,7 +48,7 @@ export class DAuthProvider implements Eip1193Provider {
   private resolve: ((result: any) => void) | null = null;
   private reject: ((reason: any) => void) | null = null;
 
-  private windowOpener: HTMLDivElement | null = null;
+  private windowOpener: WindowOpener | null = null;
 
   constructor(config: Config) {
     if (config.env === undefined) {
@@ -85,23 +86,7 @@ export class DAuthProvider implements Eip1193Provider {
       return;
     }
 
-    this.windowOpener = window.document.createElement("div");
-    this.windowOpener.id = "dauth-provider--window-opener";
-    this.windowOpener.style.backgroundColor = "#0093a5";
-    this.windowOpener.style.borderRadius = "4px";
-    this.windowOpener.style.color = "#fff";
-    this.windowOpener.style.cursor = "pointer";
-    this.windowOpener.style.display = "none";
-    this.windowOpener.style.padding = "8px 16px";
-    this.windowOpener.style.position = "fixed";
-    this.windowOpener.style.top = "16px";
-    this.windowOpener.style.right = "16px";
-    this.windowOpener.style.zIndex = "2147483647";
-    this.windowOpener.style.boxShadow =
-      "0 11px 15px -7px rgb(0 0 0 / 20%), 0 24px 38px 3px rgb(0 0 0 / 14%), 0 9px 46px 8px rgb(0 0 0 / 12%)";
-    this.windowOpener.innerText = "Open signer window";
-
-    window.document.body.appendChild(this.windowOpener);
+    this.windowOpener = new WindowOpener();
   }
 
   private setJsonRpcProvider(chainId: number): void {
@@ -357,11 +342,8 @@ export class DAuthProvider implements Eip1193Provider {
 
     const signerWindowRef = window.open(url, target, features);
     if (signerWindowRef === null) {
-      this.windowOpener!.style.display = "block";
-      this.windowOpener!.onclick = () => {
-        window.open(url, target, features);
-        this.windowOpener!.style.display = "none";
-      };
+      this.windowOpener!.showDialog();
+      this.windowOpener!.setDestination(url, target, features);
     }
   }
 

@@ -1,2 +1,2 @@
-export { DAuthProvider } from "./provider";
+export { UnWalletProvider } from "./provider";
 export * from "./types";

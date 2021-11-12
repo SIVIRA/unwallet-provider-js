@@ -6,7 +6,7 @@ export class WindowOpener {
   private action: HTMLDivElement;
 
   constructor() {
-    const id = "dauth-provider--window-opener";
+    const id = "unwallet-provider--window-opener";
 
     this.dialog = window.document.createElement("div");
     this.dialog.id = id;
@@ -46,7 +46,7 @@ export class WindowOpener {
     title.style.lineHeight = `14px`;
     this.body.appendChild(title);
     const description1 = window.document.createElement("span");
-    description1.innerText = "右の「続行」ボタンを押して、dAuth ID";
+    description1.innerText = "右の「続行」ボタンを押して、unWallet";
     description1.style.fontSize = `12px`;
     description1.style.lineHeight = `12px`;
     description1.style.margin = `8px 0 0`;

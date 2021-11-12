@@ -1,3 +1,3 @@
-# dauth-provider-js
+# unwallet-provider-js
 
-dAuth provider for JavaScript
+unWallet provider for JavaScript

@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 
-import { dAuthConfigs } from "./configs";
+import { unWalletConfigs } from "./configs";
 import {
   providerRpcErrorRejected,
   providerRpcErrorUnsupported,
@@ -10,13 +10,13 @@ import {
 } from "./errors";
 import {
   Config,
-  DAuthConfig,
   Eip712TypedData,
   Eip1193EventType,
   Eip1193Provider,
   Eip1193ProviderConnectInfo,
   Eip1193RequestArguments,
   JsonRpcProvider,
+  UnWalletConfig,
 } from "./types";
 import { WindowOpener } from "./window-opener";
 
@@ -31,11 +31,11 @@ const signerMethods = [
   "eth_sendTransaction",
 ];
 
-export class DAuthProvider implements Eip1193Provider {
-  private ACCOUNTS_CACHE_KEY = "dAuth_accounts";
+export class UnWalletProvider implements Eip1193Provider {
+  private ACCOUNTS_CACHE_KEY = "unwallet_accounts";
 
   private config: Config;
-  private dAuthConfig: DAuthConfig;
+  private unWalletConfig: UnWalletConfig;
 
   private eventEmitter: EventEmitter;
   private jsonRpcProvider: JsonRpcProvider | null = null;
@@ -58,12 +58,12 @@ export class DAuthProvider implements Eip1193Provider {
       config.allowAccountsCaching = false;
     }
 
-    if (!(config.env in dAuthConfigs)) {
+    if (!(config.env in unWalletConfigs)) {
       throw new Error("invalid env");
     }
 
     this.config = config;
-    this.dAuthConfig = dAuthConfigs[config.env!];
+    this.unWalletConfig = unWalletConfigs[config.env!];
 
     this.eventEmitter = new EventEmitter();
     this.setJsonRpcProvider(config.chainId);
@@ -215,7 +215,7 @@ export class DAuthProvider implements Eip1193Provider {
 
   private connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.dAuthConfig.wsAPIURL);
+      this.ws = new WebSocket(this.unWalletConfig.wsAPIURL);
       this.ws.onerror = (event) => {
         reject("websocket connection failed");
       };
@@ -329,7 +329,7 @@ export class DAuthProvider implements Eip1193Provider {
     const left = screen.width / 4;
     const top = 0;
 
-    const url = new URL(`${this.dAuthConfig.baseURL}${path}`);
+    const url = new URL(`${this.unWalletConfig.baseURL}${path}`);
     url.searchParams.set("connectionID", this.connectionID!);
     if (params !== undefined) {
       for (const key of Object.keys(params)) {

@@ -1,13 +1,13 @@
 {
-  "name": "dauth-provider",
-  "version": "0.8.2",
-  "description": "dAuth provider for JavaScript",
+  "name": "unwallet-provider",
+  "version": "0.1.0",
+  "description": "unWallet provider for JavaScript",
   "license": "MIT",
   "author": "SIVIRA",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/SIVIRA/dauth-provider-js.git"
+    "url": "git://github.com/SIVIRA/unwallet-provider-js.git"
   },
   "scripts": {
     "build": "tsc",

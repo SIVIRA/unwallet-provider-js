@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import { ethers } from "ethers";
 
-import { DAuthProvider } from "../src";
+import { UnWalletProvider } from "../src";
 
 import * as constants from "./constants";
 import * as utils from "./utils";
 
-describe("DAuthProvider", () => {
+describe("UnWalletProvider", () => {
   let server: utils.TestJsonRpcServer;
 
   before(async () => {
@@ -16,7 +16,7 @@ describe("DAuthProvider", () => {
 
   describe("request", () => {
     it("failure: provider RPC URL not found", async () => {
-      const provider = new DAuthProvider({
+      const provider = new UnWalletProvider({
         chainId: 0,
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
@@ -31,7 +31,7 @@ describe("DAuthProvider", () => {
     });
 
     it("success", async () => {
-      const provider = new DAuthProvider({
+      const provider = new UnWalletProvider({
         chainId: constants.TEST_CHAIN_ID,
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
@@ -48,7 +48,7 @@ describe("DAuthProvider", () => {
 
     it("success: with ethers", async () => {
       const provider = new ethers.providers.Web3Provider(
-        new DAuthProvider({
+        new UnWalletProvider({
           chainId: constants.TEST_CHAIN_ID,
           rpc: constants.TEST_PROVIDER_RPC_CONFIG,
         })

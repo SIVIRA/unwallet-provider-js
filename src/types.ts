@@ -45,7 +45,7 @@ export interface Eip1193Provider {
   ): void;
 }
 
-export interface DAuthConfig {
+export interface UnWalletConfig {
   baseURL: string;
   wsAPIURL: string;
 }

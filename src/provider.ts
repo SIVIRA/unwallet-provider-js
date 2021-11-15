@@ -9,6 +9,7 @@ import {
   providerRpcErrorDisconnected,
 } from "./errors";
 import {
+  Accounts,
   Config,
   Eip712TypedData,
   Eip1193EventType,
@@ -38,12 +39,12 @@ export class UnWalletProvider implements Eip1193Provider {
   private unWalletConfig: UnWalletConfig;
 
   private eventEmitter: EventEmitter;
-  private jsonRpcProvider: JsonRpcProvider | null = null;
   private signerMethods: string[] = signerMethods;
 
   private ws: WebSocket | null = null;
   private connectionID: string | null = null;
-  private accounts: string[] | null = null;
+  private accounts: Accounts | null = null;
+  private jsonRpcProvider: JsonRpcProvider | null = null;
 
   private resolve: ((result: any) => void) | null = null;
   private reject: ((reason: any) => void) | null = null;
@@ -66,7 +67,6 @@ export class UnWalletProvider implements Eip1193Provider {
     this.unWalletConfig = unWalletConfigs[config.env!];
 
     this.eventEmitter = new EventEmitter();
-    this.setJsonRpcProvider(config.chainId);
 
     if (config.allowAccountsCaching) {
       this.accounts = this.getAccountsCache();
@@ -105,22 +105,25 @@ export class UnWalletProvider implements Eip1193Provider {
           case "eth_requestAccounts":
             try {
               await this.connect();
+
               this.accounts = await this.requestAccounts();
+              this.setJsonRpcProvider(this.accounts.chainId);
               if (this.config.allowAccountsCaching) {
                 this.setAccountsCache(this.accounts);
               }
-              resolve(this.accounts as any);
+
+              resolve(this.accounts.addresses as any);
             } catch (e) {
               reject(e);
             }
             return;
 
           case "eth_accounts":
-            resolve(this.accounts as any);
+            resolve(this.accounts?.addresses as any);
             return;
 
           case "eth_chainId":
-            resolve(this.config.chainId as any);
+            resolve(this.accounts?.chainId as any);
             return;
 
           case "eth_sign":
@@ -248,7 +251,7 @@ export class UnWalletProvider implements Eip1193Provider {
     this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
-  private requestAccounts(): Promise<string[]> {
+  private requestAccounts(): Promise<Accounts> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
@@ -320,6 +323,9 @@ export class UnWalletProvider implements Eip1193Provider {
         }
         this.initPromiseArgs();
         break;
+
+      default:
+        throw new Error(`unknown message type: ${msg.type}`);
     }
   }
 
@@ -469,17 +475,14 @@ export class UnWalletProvider implements Eip1193Provider {
     return [params[0]];
   }
 
-  private getAccountsCache(): string[] | null {
+  private getAccountsCache(): Accounts | null {
     const accounts = localStorage.getItem(this.ACCOUNTS_CACHE_KEY);
 
     return accounts !== null ? JSON.parse(accounts) : null;
   }
 
-  private setAccountsCache(accounts: string[]): void {
-    localStorage.setItem(
-      this.ACCOUNTS_CACHE_KEY,
-      JSON.stringify(this.accounts)
-    );
+  private setAccountsCache(accounts: Accounts): void {
+    localStorage.setItem(this.ACCOUNTS_CACHE_KEY, JSON.stringify(accounts));
   }
 
   private removeAccountsCache(): void {

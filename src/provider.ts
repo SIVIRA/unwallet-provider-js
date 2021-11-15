@@ -9,6 +9,7 @@ import {
   providerRpcErrorDisconnected,
 } from "./errors";
 import {
+  Accounts,
   Config,
   Eip712TypedData,
   Eip1193EventType,
@@ -38,12 +39,12 @@ export class UnWalletProvider implements Eip1193Provider {
   private unWalletConfig: UnWalletConfig;
 
   private eventEmitter: EventEmitter;
-  private jsonRpcProvider: JsonRpcProvider | null = null;
   private signerMethods: string[] = signerMethods;
 
   private ws: WebSocket | null = null;
   private connectionID: string | null = null;
-  private accounts: string[] | null = null;
+  private accounts: Accounts | null = null;
+  private jsonRpcProvider: JsonRpcProvider | null = null;
 
   private resolve: ((result: any) => void) | null = null;
   private reject: ((reason: any) => void) | null = null;
@@ -66,7 +67,6 @@ export class UnWalletProvider implements Eip1193Provider {
     this.unWalletConfig = unWalletConfigs[config.env!];
 
     this.eventEmitter = new EventEmitter();
-    this.setJsonRpcProvider(config.chainId);
 
     if (config.allowAccountsCaching) {
       this.accounts = this.getAccountsCache();
@@ -89,13 +89,9 @@ export class UnWalletProvider implements Eip1193Provider {
     this.windowOpener = new WindowOpener();
   }
 
-  private setJsonRpcProvider(chainId: number): void {
-    if (!this.config.rpc || !(chainId in this.config.rpc)) {
-      this.jsonRpcProvider = null;
-      return;
-    }
-
-    this.jsonRpcProvider = new JsonRpcProvider(this.config.rpc[chainId]);
+  public _setAccounts(accounts: Accounts): void {
+    this.accounts = accounts;
+    this.setJsonRpcProvider(this.accounts.chainId);
   }
 
   public request<T = unknown>(args: Eip1193RequestArguments): Promise<T> {
@@ -105,22 +101,30 @@ export class UnWalletProvider implements Eip1193Provider {
           case "eth_requestAccounts":
             try {
               await this.connect();
+
               this.accounts = await this.requestAccounts();
+              this.setJsonRpcProvider(this.accounts.chainId);
               if (this.config.allowAccountsCaching) {
                 this.setAccountsCache(this.accounts);
               }
-              resolve(this.accounts as any);
+
+              const connectInfo: Eip1193ProviderConnectInfo = {
+                chainId: `${this.accounts.chainId}`,
+              };
+              this.eventEmitter.emit("connect", connectInfo);
+
+              resolve(this.accounts.addresses as any);
             } catch (e) {
               reject(e);
             }
             return;
 
           case "eth_accounts":
-            resolve(this.accounts as any);
+            resolve(this.accounts?.addresses as any);
             return;
 
           case "eth_chainId":
-            resolve(this.config.chainId as any);
+            resolve(this.accounts?.chainId as any);
             return;
 
           case "eth_sign":
@@ -207,10 +211,20 @@ export class UnWalletProvider implements Eip1193Provider {
   public async disable(): Promise<void> {
     this.disconnect();
     this.removeAccountsCache();
+    this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
   private isConnected(): boolean {
     return this.ws !== null && this.connectionID !== null;
+  }
+
+  private setJsonRpcProvider(chainId: number): void {
+    if (!this.config.rpc || !(chainId in this.config.rpc)) {
+      this.jsonRpcProvider = null;
+      return;
+    }
+
+    this.jsonRpcProvider = new JsonRpcProvider(this.config.rpc[chainId]);
   }
 
   private connect(): Promise<void> {
@@ -226,12 +240,6 @@ export class UnWalletProvider implements Eip1193Provider {
         const msg = JSON.parse(event.data);
         if (msg.type === "connectionID") {
           this.connectionID = msg.data.value;
-
-          const connectInfo: Eip1193ProviderConnectInfo = {
-            chainId: `${this.config.chainId}`,
-          };
-          this.eventEmitter.emit("connect", connectInfo);
-
           resolve();
           return;
         }
@@ -244,11 +252,9 @@ export class UnWalletProvider implements Eip1193Provider {
     this.ws = null;
     this.connectionID = null;
     this.accounts = null;
-
-    this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
-  private requestAccounts(): Promise<string[]> {
+  private requestAccounts(): Promise<Accounts> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
@@ -320,6 +326,9 @@ export class UnWalletProvider implements Eip1193Provider {
         }
         this.initPromiseArgs();
         break;
+
+      default:
+        throw new Error(`unknown message type: ${msg.type}`);
     }
   }
 
@@ -469,17 +478,14 @@ export class UnWalletProvider implements Eip1193Provider {
     return [params[0]];
   }
 
-  private getAccountsCache(): string[] | null {
+  private getAccountsCache(): Accounts | null {
     const accounts = localStorage.getItem(this.ACCOUNTS_CACHE_KEY);
 
     return accounts !== null ? JSON.parse(accounts) : null;
   }
 
-  private setAccountsCache(accounts: string[]): void {
-    localStorage.setItem(
-      this.ACCOUNTS_CACHE_KEY,
-      JSON.stringify(this.accounts)
-    );
+  private setAccountsCache(accounts: Accounts): void {
+    localStorage.setItem(this.ACCOUNTS_CACHE_KEY, JSON.stringify(accounts));
   }
 
   private removeAccountsCache(): void {

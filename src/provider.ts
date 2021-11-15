@@ -89,13 +89,9 @@ export class UnWalletProvider implements Eip1193Provider {
     this.windowOpener = new WindowOpener();
   }
 
-  private setJsonRpcProvider(chainId: number): void {
-    if (!this.config.rpc || !(chainId in this.config.rpc)) {
-      this.jsonRpcProvider = null;
-      return;
-    }
-
-    this.jsonRpcProvider = new JsonRpcProvider(this.config.rpc[chainId]);
+  public _setAccounts(accounts: Accounts): void {
+    this.accounts = accounts;
+    this.setJsonRpcProvider(this.accounts.chainId);
   }
 
   public request<T = unknown>(args: Eip1193RequestArguments): Promise<T> {
@@ -220,6 +216,15 @@ export class UnWalletProvider implements Eip1193Provider {
 
   private isConnected(): boolean {
     return this.ws !== null && this.connectionID !== null;
+  }
+
+  private setJsonRpcProvider(chainId: number): void {
+    if (!this.config.rpc || !(chainId in this.config.rpc)) {
+      this.jsonRpcProvider = null;
+      return;
+    }
+
+    this.jsonRpcProvider = new JsonRpcProvider(this.config.rpc[chainId]);
   }
 
   private connect(): Promise<void> {

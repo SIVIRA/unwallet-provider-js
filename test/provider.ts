@@ -17,7 +17,6 @@ describe("UnWalletProvider", () => {
   describe("request", () => {
     it("failure: provider RPC URL not found", async () => {
       const provider = new UnWalletProvider({
-        chainId: 0,
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
 
@@ -32,8 +31,11 @@ describe("UnWalletProvider", () => {
 
     it("success", async () => {
       const provider = new UnWalletProvider({
-        chainId: constants.TEST_CHAIN_ID,
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
+      });
+      provider._setAccounts({
+        chainId: constants.TEST_CHAIN_ID,
+        addresses: [],
       });
 
       expect(
@@ -47,15 +49,18 @@ describe("UnWalletProvider", () => {
     });
 
     it("success: with ethers", async () => {
-      const provider = new ethers.providers.Web3Provider(
-        new UnWalletProvider({
-          chainId: constants.TEST_CHAIN_ID,
-          rpc: constants.TEST_PROVIDER_RPC_CONFIG,
-        })
-      );
+      const provider = new UnWalletProvider({
+        rpc: constants.TEST_PROVIDER_RPC_CONFIG,
+      });
+      provider._setAccounts({
+        chainId: constants.TEST_CHAIN_ID,
+        addresses: [],
+      });
+
+      const web3Provider = new ethers.providers.Web3Provider(provider);
 
       expect(
-        await provider.getTransactionCount(ethers.constants.AddressZero)
+        await web3Provider.getTransactionCount(ethers.constants.AddressZero)
       ).to.equal(0);
     });
   });

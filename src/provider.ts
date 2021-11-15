@@ -112,6 +112,11 @@ export class UnWalletProvider implements Eip1193Provider {
                 this.setAccountsCache(this.accounts);
               }
 
+              const connectInfo: Eip1193ProviderConnectInfo = {
+                chainId: `${this.accounts.chainId}`,
+              };
+              this.eventEmitter.emit("connect", connectInfo);
+
               resolve(this.accounts.addresses as any);
             } catch (e) {
               reject(e);
@@ -210,6 +215,7 @@ export class UnWalletProvider implements Eip1193Provider {
   public async disable(): Promise<void> {
     this.disconnect();
     this.removeAccountsCache();
+    this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
   private isConnected(): boolean {
@@ -229,12 +235,6 @@ export class UnWalletProvider implements Eip1193Provider {
         const msg = JSON.parse(event.data);
         if (msg.type === "connectionID") {
           this.connectionID = msg.data.value;
-
-          const connectInfo: Eip1193ProviderConnectInfo = {
-            chainId: `${this.config.chainId}`,
-          };
-          this.eventEmitter.emit("connect", connectInfo);
-
           resolve();
           return;
         }
@@ -247,8 +247,6 @@ export class UnWalletProvider implements Eip1193Provider {
     this.ws = null;
     this.connectionID = null;
     this.accounts = null;
-
-    this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
   private requestAccounts(): Promise<Accounts> {

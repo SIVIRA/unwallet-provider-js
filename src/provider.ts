@@ -51,7 +51,11 @@ export class UnWalletProvider implements Eip1193Provider {
 
   private windowOpener: WindowOpener | null = null;
 
-  constructor(config: Config) {
+  constructor(config?: Config) {
+    if (config === undefined) {
+      config = {};
+    }
+
     if (config.env === undefined) {
       config.env = "prod";
     }

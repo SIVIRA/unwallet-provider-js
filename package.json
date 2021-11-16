@@ -1,7 +1,7 @@
 {
   "name": "unwallet-provider",
   "version": "0.2.0",
-  "description": "unWallet provider for JavaScript",
+  "description": "unWallet provider",
   "license": "MIT",
   "author": "SIVIRA",
   "main": "dist/index.js",

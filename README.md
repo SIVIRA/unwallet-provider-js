@@ -1,1 +1,1 @@
-# unWallet provider for JavaScript
+# unWallet provider

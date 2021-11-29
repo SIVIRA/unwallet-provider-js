@@ -28,7 +28,7 @@ export class WindowOpener {
     this.logo.style.justifyContent = `center`;
     this.logo.style.padding = `0 16px`;
     const logoImage = window.document.createElement("img");
-    logoImage.src = "https://cdn.dauth.world/assets/img/icon.png";
+    logoImage.src = "https://cdn.unwallet.world/assets/img/icon.png";
     logoImage.style.height = `40px`;
     this.logo.appendChild(logoImage);
     this.dialog.appendChild(this.logo);

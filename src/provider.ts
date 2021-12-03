@@ -172,7 +172,7 @@ export class UnWalletProvider implements Eip1193Provider {
               const params = this.parseEthSignTypedDataParams(args.params);
               const sig = await this.ethSignTypedData({
                 account: params[0],
-                data: params[1],
+                data: JSON.stringify(params[1]),
               });
               resolve(sig as any);
             } catch (e) {
@@ -186,7 +186,7 @@ export class UnWalletProvider implements Eip1193Provider {
                 await this.connect();
               }
               const params = this.parseEthSignTypedDataV4Params(args.params);
-              const sig = await this.ethSignTypedDataV4({
+              const sig = await this.ethSignTypedData({
                 account: params[0],
                 data: params[1],
               });
@@ -308,20 +308,6 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   private ethSignTypedData(args: {
-    account: string;
-    data: Eip712TypedData;
-  }): Promise<string> {
-    return new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-      this.openSignerWindow("/x/eth/signTypedData", {
-        account: args.account,
-        data: JSON.stringify(args.data),
-      });
-    });
-  }
-
-  private ethSignTypedDataV4(args: {
     account: string;
     data: string;
   }): Promise<string> {

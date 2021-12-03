@@ -25,6 +25,7 @@ const signerMethods = [
   "eth_requestAccounts",
   "eth_accounts",
   "eth_chainId",
+  "personal_sign",
   "eth_sign",
   "eth_signTypedData",
   "eth_signTypedData_v4",
@@ -131,13 +132,33 @@ export class UnWalletProvider implements Eip1193Provider {
             resolve(this.accounts?.chainId as any);
             return;
 
+          case "personal_sign":
+            try {
+              if (!this.isConnected()) {
+                await this.connect();
+              }
+              const params = this.parsePersonalSignParams(args.params);
+              const sig = await this.ethSign({
+                account: params[1],
+                message: params[0],
+              });
+              resolve(sig as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
           case "eth_sign":
             try {
               if (!this.isConnected()) {
                 await this.connect();
               }
               const params = this.parseEthSignParams(args.params);
-              resolve((await this.ethSign(params[1])) as any);
+              const sig = await this.ethSign({
+                account: params[0],
+                message: params[1],
+              });
+              resolve(sig as any);
             } catch (e) {
               reject(e);
             }
@@ -149,7 +170,11 @@ export class UnWalletProvider implements Eip1193Provider {
                 await this.connect();
               }
               const params = this.parseEthSignTypedDataParams(args.params);
-              resolve((await this.ethSignTypedData(params[1])) as any);
+              const sig = await this.ethSignTypedData({
+                account: params[0],
+                data: params[1],
+              });
+              resolve(sig as any);
             } catch (e) {
               reject(e);
             }
@@ -161,7 +186,11 @@ export class UnWalletProvider implements Eip1193Provider {
                 await this.connect();
               }
               const params = this.parseEthSignTypedDataV4Params(args.params);
-              resolve((await this.ethSignTypedDataV4(params[1])) as any);
+              const sig = await this.ethSignTypedDataV4({
+                account: params[0],
+                data: params[1],
+              });
+              resolve(sig as any);
             } catch (e) {
               reject(e);
             }
@@ -180,7 +209,8 @@ export class UnWalletProvider implements Eip1193Provider {
                 await this.connect();
               }
               const params = this.parseEthSendTransactionParams(args.params);
-              resolve((await this.ethSendTransaction(params[0])) as any);
+              const txHash = await this.ethSendTransaction(params[0]);
+              resolve(txHash as any);
             } catch (e) {
               reject(e);
             }
@@ -266,32 +296,41 @@ export class UnWalletProvider implements Eip1193Provider {
     });
   }
 
-  private ethSign(message: string): Promise<string> {
+  private ethSign(args: { account: string; message: string }): Promise<string> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
       this.openSignerWindow("/x/eth/sign", {
-        message: message,
+        account: args.account,
+        message: args.message,
       });
     });
   }
 
-  private ethSignTypedData(data: Eip712TypedData): Promise<string> {
+  private ethSignTypedData(args: {
+    account: string;
+    data: Eip712TypedData;
+  }): Promise<string> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
       this.openSignerWindow("/x/eth/signTypedData", {
-        data: JSON.stringify(data),
+        account: args.account,
+        data: JSON.stringify(args.data),
       });
     });
   }
 
-  private ethSignTypedDataV4(data: string): Promise<string> {
+  private ethSignTypedDataV4(args: {
+    account: string;
+    data: string;
+  }): Promise<string> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
       this.openSignerWindow("/x/eth/signTypedData", {
-        data: data,
+        account: args.account,
+        data: args.data,
       });
     });
   }
@@ -372,6 +411,25 @@ export class UnWalletProvider implements Eip1193Provider {
     listener: (...args: any[]) => void
   ): void {
     this.eventEmitter.removeListener(eventType, listener);
+  }
+
+  private parsePersonalSignParams(
+    params?: object | readonly unknown[]
+  ): [string, string] {
+    if (params === undefined) {
+      throw new Error("params undefined");
+    }
+    if (!Array.isArray(params) || params.length !== 2) {
+      throw new Error("invalid params");
+    }
+    if (!ethers.utils.isHexString(params[0])) {
+      throw new Error("invalid message");
+    }
+    if (!ethers.utils.isAddress(params[1])) {
+      throw new Error("invalid account");
+    }
+
+    return [params[0], params[1]];
   }
 
   private parseEthSignParams(

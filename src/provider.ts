@@ -45,7 +45,7 @@ export class UnWalletProvider implements Eip1193Provider {
   private signerMethods: string[] = signerMethods;
 
   private ws: WebSocket | null = null;
-  private connectionID: string | null = null;
+  private connectionId: string | null = null;
   private accounts: Accounts | null = null;
   private jsonRpcProvider: JsonRpcProvider | null = null;
 
@@ -227,11 +227,11 @@ export class UnWalletProvider implements Eip1193Provider {
                 args.params
               );
 
-              const chainID = ethers.BigNumber.from(params[0].chainId);
-              await this.walletSwitchEthereumChain(chainID.toHexString());
-              this.accounts!.chainId = chainID.toNumber();
+              const chainId = ethers.BigNumber.from(params[0].chainId);
+              await this.walletSwitchEthereumChain(chainId.toHexString());
+              this.accounts!.chainId = chainId.toNumber();
 
-              this.eventEmitter.emit("chainChanged", chainID.toHexString());
+              this.eventEmitter.emit("chainChanged", chainId.toHexString());
 
               resolve(null as any);
             } catch (e) {
@@ -272,7 +272,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   private isConnected(): boolean {
-    return this.ws !== null && this.connectionID !== null;
+    return this.ws !== null && this.connectionId !== null;
   }
 
   private setJsonRpcProvider(chainId: number): void {
@@ -291,12 +291,12 @@ export class UnWalletProvider implements Eip1193Provider {
         reject("websocket connection failed");
       };
       this.ws.onopen = (event) => {
-        this.getConnectionID();
+        this.getConnectionId();
       };
       this.ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "connectionID") {
-          this.connectionID = msg.data.value;
+          this.connectionId = msg.data.value;
           resolve();
           return;
         }
@@ -307,7 +307,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   private disconnect(): void {
     this.ws = null;
-    this.connectionID = null;
+    this.connectionId = null;
     this.accounts = null;
   }
 
@@ -356,17 +356,17 @@ export class UnWalletProvider implements Eip1193Provider {
     });
   }
 
-  private walletSwitchEthereumChain(chainID: string): Promise<void> {
+  private walletSwitchEthereumChain(chainId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
       this.openSignerWindow("/x/wallet/switchEthereumChain", {
-        chainID: chainID,
+        chainID: chainId,
       });
     });
   }
 
-  private getConnectionID(): void {
+  private getConnectionId(): void {
     this.sendWSMessage({
       action: "getConnectionID",
     });
@@ -410,7 +410,7 @@ export class UnWalletProvider implements Eip1193Provider {
     const top = 0;
 
     const url = new URL(`${this.unWalletConfig.baseURL}${path}`);
-    url.searchParams.set("connectionID", this.connectionID!);
+    url.searchParams.set("connectionID", this.connectionId!);
     if (params !== undefined) {
       for (const key of Object.keys(params)) {
         url.searchParams.set(key, params[key]);

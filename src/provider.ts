@@ -16,6 +16,7 @@ import {
   Eip1193Provider,
   Eip1193ProviderConnectInfo,
   Eip1193RequestArguments,
+  Eip3326SwitchEthereumChainParameter,
   JsonRpcProvider,
   UnWalletConfig,
 } from "./types";
@@ -31,6 +32,7 @@ const signerMethods = [
   "eth_signTypedData_v4",
   "eth_signTransaction",
   "eth_sendTransaction",
+  "wallet_switchEthereumChain",
 ];
 
 export class UnWalletProvider implements Eip1193Provider {
@@ -216,6 +218,27 @@ export class UnWalletProvider implements Eip1193Provider {
             }
             return;
 
+          case "wallet_switchEthereumChain":
+            try {
+              if (!this.isConnected()) {
+                await this.connect();
+              }
+              const params = this.parseWalletSwitchEthereumChainParams(
+                args.params
+              );
+
+              const chainID = ethers.BigNumber.from(params[0].chainId);
+              await this.walletSwitchEthereumChain(chainID.toHexString());
+              this.accounts!.chainId = chainID.toNumber();
+
+              this.eventEmitter.emit("chainChanged", chainID.toHexString());
+
+              resolve(null as any);
+            } catch (e) {
+              reject(e);
+            }
+            return;
+
           default:
             reject(providerRpcErrorUnsupported);
             return;
@@ -333,6 +356,16 @@ export class UnWalletProvider implements Eip1193Provider {
     });
   }
 
+  private walletSwitchEthereumChain(chainID: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+      this.openSignerWindow("/x/wallet/switchEthereumChain", {
+        chainID: chainID,
+      });
+    });
+  }
+
   private getConnectionID(): void {
     this.sendWSMessage({
       action: "getConnectionID",
@@ -352,6 +385,15 @@ export class UnWalletProvider implements Eip1193Provider {
           this.reject!(providerRpcErrorRejected);
         } else {
           this.resolve!(msg.data.value);
+        }
+        this.initPromiseArgs();
+        break;
+
+      case "success":
+        if (msg.data.value === false) {
+          this.reject!(providerRpcErrorRejected);
+        } else {
+          this.resolve!(true);
         }
         this.initPromiseArgs();
         break;
@@ -521,6 +563,28 @@ export class UnWalletProvider implements Eip1193Provider {
       if (field in params[0] && !ethers.utils.isHexString(params[0][field])) {
         throw new Error(`invalid transaction: invalid "${field}"`);
       }
+    }
+
+    return [params[0]];
+  }
+
+  private parseWalletSwitchEthereumChainParams(
+    params?: object | readonly unknown[]
+  ): [Eip3326SwitchEthereumChainParameter] {
+    if (params === undefined) {
+      throw new Error("params undefined");
+    }
+    if (!Array.isArray(params) || params.length !== 1) {
+      throw new Error("invalid params");
+    }
+    if (typeof params[0] !== "object" || Array.isArray(params[0])) {
+      throw new Error("invalid network");
+    }
+    if (!("chainId" in params[0])) {
+      throw new Error(`invalid network: "chainId" undefined`);
+    }
+    if (!ethers.utils.isHexString(params[0].chainId)) {
+      throw new Error(`invalid network: invalid "chainId"`);
     }
 
     return [params[0]];

@@ -45,6 +45,10 @@ export interface Eip1193Provider {
   ): void;
 }
 
+export interface Eip3326SwitchEthereumChainParameter {
+  chainId: string;
+}
+
 export interface UnWalletConfig {
   baseURL: string;
   wsAPIURL: string;

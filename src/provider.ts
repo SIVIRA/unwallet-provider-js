@@ -315,7 +315,7 @@ export class UnWalletProvider implements Eip1193Provider {
       this.ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "connectionID") {
-          this.connectionId = msg.data.value;
+          this.connectionId = msg.value;
           resolve();
           return;
         }
@@ -403,39 +403,40 @@ export class UnWalletProvider implements Eip1193Provider {
   protected handleWSMessage(msg: any): void {
     switch (msg.type) {
       case "accounts":
-        if (msg.data.value === null) {
-          this.reject!(providerRpcErrorRejected);
-        } else {
-          this.resolve!({
-            chainId: ethers.BigNumber.from(msg.data.value.chainID),
-            addresses: msg.data.value.addresses,
-          });
-        }
-        this.initPromiseArgs();
+        this.resolve!({
+          chainId: ethers.BigNumber.from(msg.value.chainID),
+          addresses: msg.value.addresses,
+        });
         break;
 
       case "signature":
-      case "transactionHash":
-        if (msg.data.value === null) {
-          this.reject!(providerRpcErrorRejected);
-        } else {
-          this.resolve!(msg.data.value);
-        }
-        this.initPromiseArgs();
+        this.resolve!(msg.value);
         break;
 
-      case "success":
-        if (msg.data.value === false) {
-          this.reject!(providerRpcErrorRejected);
-        } else {
-          this.resolve!(true);
+      case "transactionHash":
+        this.resolve!(msg.value);
+        break;
+
+      case "null":
+        this.resolve!(msg.value);
+        break;
+
+      case "error":
+        switch (msg.value) {
+          case "rejected":
+            this.reject!(providerRpcErrorRejected);
+            break;
+
+          default:
+            throw new Error(msg.value);
         }
-        this.initPromiseArgs();
         break;
 
       default:
         throw new Error(`unknown message type: ${msg.type}`);
     }
+
+    this.initPromiseArgs();
   }
 
   protected openSignerWindow(path: string, params?: any): void {

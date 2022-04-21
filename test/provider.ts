@@ -1,10 +1,16 @@
 import { expect } from "chai";
 import { ethers } from "ethers";
 
-import { UnWalletProvider } from "../src";
+import { Accounts, UnWalletProvider } from "../src";
 
 import * as constants from "./constants";
 import * as utils from "./utils";
+
+class TestUnWalletProvider extends UnWalletProvider {
+  public setAccountsForTest(accounts: Accounts) {
+    this.setAccounts(accounts);
+  }
+}
 
 describe("UnWalletProvider", () => {
   let server: utils.TestJsonRpcServer;
@@ -16,7 +22,7 @@ describe("UnWalletProvider", () => {
 
   describe("request", () => {
     it("failure: provider RPC URL not found", async () => {
-      const provider = new UnWalletProvider({
+      const provider = new TestUnWalletProvider({
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
 
@@ -30,10 +36,10 @@ describe("UnWalletProvider", () => {
     });
 
     it("success", async () => {
-      const provider = new UnWalletProvider({
+      const provider = new TestUnWalletProvider({
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
-      provider._setAccounts({
+      provider.setAccountsForTest({
         chainId: constants.TEST_CHAIN_ID,
         addresses: [],
       });
@@ -49,10 +55,10 @@ describe("UnWalletProvider", () => {
     });
 
     it("success: with ethers", async () => {
-      const provider = new UnWalletProvider({
+      const provider = new TestUnWalletProvider({
         rpc: constants.TEST_PROVIDER_RPC_CONFIG,
       });
-      provider._setAccounts({
+      provider.setAccountsForTest({
         chainId: constants.TEST_CHAIN_ID,
         addresses: [],
       });

@@ -96,11 +96,6 @@ export class UnWalletProvider implements Eip1193Provider {
     this.windowOpener = new WindowOpener();
   }
 
-  public _setAccounts(accounts: Accounts): void {
-    this.accounts = accounts;
-    this.setJsonRpcProvider(this.accounts.chainId);
-  }
-
   public request<T = unknown>(args: Eip1193RequestArguments): Promise<T> {
     return new Promise(async (resolve, reject) => {
       if (this.signerMethods.includes(args.method)) {
@@ -109,18 +104,15 @@ export class UnWalletProvider implements Eip1193Provider {
             try {
               await this.connect();
 
-              this.accounts = await this.requestAccounts();
-              this.setJsonRpcProvider(this.accounts.chainId);
-              if (this.config.allowAccountsCaching) {
-                this.setAccountsCache(this.accounts);
-              }
+              const accounts = await this.requestAccounts();
+              this.setAccounts(accounts);
 
               const connectInfo: Eip1193ProviderConnectInfo = {
-                chainId: this.accounts.chainId.toHexString(),
+                chainId: accounts.chainId.toHexString(),
               };
               this.eventEmitter.emit("connect", connectInfo);
 
-              resolve(this.accounts.addresses as any);
+              resolve(accounts.addresses as any);
             } catch (e) {
               reject(e);
             }
@@ -229,7 +221,10 @@ export class UnWalletProvider implements Eip1193Provider {
 
               const chainId = ethers.BigNumber.from(params[0].chainId);
               await this.walletSwitchEthereumChain(chainId);
-              this.accounts!.chainId = chainId;
+              this.setAccounts({
+                chainId: chainId,
+                addresses: this.accounts!.addresses,
+              });
 
               this.eventEmitter.emit("chainChanged", chainId.toHexString());
 
@@ -273,6 +268,14 @@ export class UnWalletProvider implements Eip1193Provider {
 
   protected isConnected(): boolean {
     return this.ws !== null && this.connectionId !== null;
+  }
+
+  protected setAccounts(accounts: Accounts): void {
+    this.accounts = accounts;
+    this.setJsonRpcProvider(accounts.chainId);
+    if (this.config.allowAccountsCaching) {
+      this.setAccountsCache(accounts);
+    }
   }
 
   protected setJsonRpcProvider(chainId: ethers.BigNumber): void {

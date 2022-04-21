@@ -65,7 +65,7 @@ export interface Config {
 }
 
 export interface Accounts {
-  chainId: number;
+  chainId: ethers.BigNumber;
   addresses: string[];
 }
 

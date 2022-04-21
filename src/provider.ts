@@ -116,7 +116,7 @@ export class UnWalletProvider implements Eip1193Provider {
               }
 
               const connectInfo: Eip1193ProviderConnectInfo = {
-                chainId: `${this.accounts.chainId}`,
+                chainId: this.accounts.chainId.toHexString(),
               };
               this.eventEmitter.emit("connect", connectInfo);
 
@@ -131,7 +131,7 @@ export class UnWalletProvider implements Eip1193Provider {
             return;
 
           case "eth_chainId":
-            resolve(this.accounts?.chainId as any);
+            resolve(this.accounts?.chainId.toHexString() as any);
             return;
 
           case "personal_sign":
@@ -228,8 +228,8 @@ export class UnWalletProvider implements Eip1193Provider {
               );
 
               const chainId = ethers.BigNumber.from(params[0].chainId);
-              await this.walletSwitchEthereumChain(chainId.toHexString());
-              this.accounts!.chainId = chainId.toNumber();
+              await this.walletSwitchEthereumChain(chainId);
+              this.accounts!.chainId = chainId;
 
               this.eventEmitter.emit("chainChanged", chainId.toHexString());
 
@@ -275,13 +275,15 @@ export class UnWalletProvider implements Eip1193Provider {
     return this.ws !== null && this.connectionId !== null;
   }
 
-  private setJsonRpcProvider(chainId: number): void {
-    if (!this.config.rpc || !(chainId in this.config.rpc)) {
+  private setJsonRpcProvider(chainId: ethers.BigNumber): void {
+    if (!this.config.rpc || !(chainId.toNumber() in this.config.rpc)) {
       this.jsonRpcProvider = null;
       return;
     }
 
-    this.jsonRpcProvider = new JsonRpcProvider(this.config.rpc[chainId]);
+    this.jsonRpcProvider = new JsonRpcProvider(
+      this.config.rpc[chainId.toNumber()]
+    );
   }
 
   private connect(): Promise<void> {
@@ -356,12 +358,12 @@ export class UnWalletProvider implements Eip1193Provider {
     });
   }
 
-  private walletSwitchEthereumChain(chainId: string): Promise<void> {
+  private walletSwitchEthereumChain(chainId: ethers.BigNumber): Promise<void> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
       this.openSignerWindow("/x/wallet/switchEthereumChain", {
-        chainID: chainId,
+        chainID: chainId.toHexString(),
       });
     });
   }
@@ -379,6 +381,17 @@ export class UnWalletProvider implements Eip1193Provider {
   private handleWSMessage(msg: any): void {
     switch (msg.type) {
       case "accounts":
+        if (msg.data.value === null) {
+          this.reject!(providerRpcErrorRejected);
+        } else {
+          this.resolve!({
+            chainId: ethers.BigNumber.from(msg.data.value.chainID),
+            addresses: msg.data.value.addresses,
+          });
+        }
+        this.initPromiseArgs();
+        break;
+
       case "signature":
       case "transactionHash":
         if (msg.data.value === null) {

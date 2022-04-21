@@ -1,9 +1,9 @@
 export class WindowOpener {
-  private dialog: HTMLDivElement;
+  protected dialog: HTMLDivElement;
 
-  private logo: HTMLDivElement;
-  private body: HTMLDivElement;
-  private action: HTMLDivElement;
+  protected logo: HTMLDivElement;
+  protected body: HTMLDivElement;
+  protected action: HTMLDivElement;
 
   constructor() {
     const id = "unwallet-provider--window-opener";

@@ -388,6 +388,7 @@ export class UnWalletProvider implements Eip1193Provider {
       this.reject = reject;
       this.openSignerWindow("/x/eth/sendTransaction", {
         transaction: JSON.stringify(transaction),
+        chainID: this.accounts!.chainId.toHexString(),
       });
     });
   }

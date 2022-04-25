@@ -290,13 +290,27 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected getAccountsCache(): Accounts | null {
-    const accounts = localStorage.getItem(this.ACCOUNTS_CACHE_KEY);
+    const accountsEncoded = localStorage.getItem(this.ACCOUNTS_CACHE_KEY);
+    if (accountsEncoded === null) {
+      return null;
+    }
 
-    return accounts !== null ? JSON.parse(accounts) : null;
+    const accounts = JSON.parse(accountsEncoded);
+
+    return {
+      chainId: ethers.BigNumber.from(accounts.chainId),
+      addresses: accounts.addresses,
+    };
   }
 
   protected setAccountsCache(accounts: Accounts): void {
-    localStorage.setItem(this.ACCOUNTS_CACHE_KEY, JSON.stringify(accounts));
+    localStorage.setItem(
+      this.ACCOUNTS_CACHE_KEY,
+      JSON.stringify({
+        chainId: accounts.chainId.toHexString(),
+        addresses: accounts.addresses,
+      })
+    );
   }
 
   protected removeAccountsCache(): void {
@@ -374,6 +388,7 @@ export class UnWalletProvider implements Eip1193Provider {
       this.reject = reject;
       this.openSignerWindow("/x/eth/sendTransaction", {
         transaction: JSON.stringify(transaction),
+        chainID: this.accounts!.chainId.toHexString(),
       });
     });
   }

@@ -1,36 +1,21 @@
 import { expect } from "chai";
-import ganache from "ganache-core";
+import ganache, { Server } from "ganache";
 
 import * as constants from "./constants";
 
 class TestJsonRpcServer {
-  private server: ganache.Server;
+  private server: Server;
 
   constructor() {
     this.server = ganache.server();
   }
 
   public start = async (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      this.server.on("error", (err) => {
-        reject(err);
-      });
-      this.server.listen(constants.TEST_JSON_RPC_SERVER_PORT, () => {
-        resolve();
-      });
-    });
+    await this.server.listen(constants.TEST_JSON_RPC_SERVER_PORT);
   };
 
   public stop = async (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      this.server.close((err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
+    await this.server.close();
   };
 }
 

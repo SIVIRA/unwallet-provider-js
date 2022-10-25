@@ -14,7 +14,8 @@
     "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' mocha -r ts-node/register test/**/*.ts"
   },
   "dependencies": {
-    "ethers": "^5.7.2"
+    "ethers": "^5.7.2",
+    "events": "^3.3.0"
   },
   "devDependencies": {
     "@types/chai": "^4.3.3",

@@ -473,8 +473,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
     const signerWindowRef = window.open(url, target, features);
     if (signerWindowRef === null) {
-      this.windowOpener!.showDialog();
-      this.windowOpener!.setDestination(url, target, features);
+      this.windowOpener!.showDialog(url, target, features);
     }
   }
 

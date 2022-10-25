@@ -348,7 +348,7 @@ export class UnWalletProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-      this.openSignerWindow("/x/eth/requestAccounts");
+      this.openWallet("/x/eth/requestAccounts");
     });
   }
 
@@ -359,7 +359,7 @@ export class UnWalletProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-      this.openSignerWindow("/x/eth/sign", {
+      this.openWallet("/x/eth/sign", {
         account: args.account,
         message: args.message,
       });
@@ -373,7 +373,7 @@ export class UnWalletProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-      this.openSignerWindow("/x/eth/signTypedData", {
+      this.openWallet("/x/eth/signTypedData", {
         account: args.account,
         data: args.data,
       });
@@ -386,7 +386,7 @@ export class UnWalletProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-      this.openSignerWindow("/x/eth/sendTransaction", {
+      this.openWallet("/x/eth/sendTransaction", {
         transaction: JSON.stringify(transaction),
         chainID: this.accounts!.chainId.toHexString(),
       });
@@ -399,7 +399,7 @@ export class UnWalletProvider implements Eip1193Provider {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-      this.openSignerWindow("/x/wallet/switchEthereumChain", {
+      this.openWallet("/x/wallet/switchEthereumChain", {
         chainID: chainId.toHexString(),
       });
     });
@@ -454,7 +454,7 @@ export class UnWalletProvider implements Eip1193Provider {
     this.initPromiseArgs();
   }
 
-  protected openSignerWindow(path: string, params?: any): void {
+  protected openWallet(path: string, params?: any): void {
     const width = screen.width / 2;
     const height = screen.height;
     const left = screen.width / 4;

@@ -17,6 +17,8 @@ export class WindowOpener {
   }
 
   protected initDialog(): HTMLDivElement {
+    const isJapanese = navigator.language.includes("ja");
+
     const dialog = window.document.createElement("div");
     dialog.id = "unwallet-provider--window-opener";
     dialog.style.backgroundColor = `#fff`;
@@ -49,19 +51,31 @@ export class WindowOpener {
     body.style.justifyContent = `center`;
     body.style.padding = `0 16px 0 0`;
     const title = window.document.createElement("span");
-    title.innerText = "認証が必要です";
+    if (isJapanese) {
+      title.innerText = `認証が必要です`;
+    } else {
+      title.innerText = `Authentication required`;
+    }
     title.style.fontSize = `14px`;
     title.style.fontWeight = `bold`;
     title.style.lineHeight = `14px`;
     body.appendChild(title);
     const description1 = window.document.createElement("span");
-    description1.innerText = "右の「続行」ボタンを押して、unWallet";
+    if (isJapanese) {
+      description1.innerText = `右の「続行」ボタンを押して、unWallet`;
+    } else {
+      description1.innerText = `Press the "Continue" button on the right`;
+    }
     description1.style.fontSize = `12px`;
     description1.style.lineHeight = `12px`;
     description1.style.margin = `8px 0 0`;
     body.appendChild(description1);
     const description2 = window.document.createElement("span");
-    description2.innerText = "による認証を続行してください。";
+    if (isJapanese) {
+      description2.innerText = `による認証を続行してください。`;
+    } else {
+      description2.innerText = `to continue authentication with unWallet.`;
+    }
     description2.style.fontSize = `12px`;
     description2.style.lineHeight = `12px`;
     description2.style.margin = `4px 0 0`;
@@ -78,7 +92,11 @@ export class WindowOpener {
     action.style.justifyContent = `center`;
     action.style.padding = `0 16px`;
     const actionText = window.document.createElement("span");
-    actionText.innerText = "続行";
+    if (isJapanese) {
+      actionText.innerText = `続行`;
+    } else {
+      actionText.innerText = `Continue`;
+    }
     actionText.style.fontSize = `12px`;
     actionText.style.lineHeight = `12px`;
     action.appendChild(actionText);

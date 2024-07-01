@@ -2,15 +2,19 @@ import { UnWalletConfig } from "./types";
 
 export const unWalletConfigs: { [env: string]: UnWalletConfig } = {
   prod: {
-    baseURL: "https://id.unwallet.world",
-    wsAPIURL: "wss://in-ws-api.id.unwallet.world",
+    frontend: {
+      baseURL: "https://id.unwallet.world",
+    },
+    xapi: {
+      url: "wss://xapi.id.unwallet.world",
+    },
   },
   dev: {
-    baseURL: "https://id.unwallet.dev",
-    wsAPIURL: "wss://in-ws-api.id.unwallet.dev",
-  },
-  local: {
-    baseURL: "http://localhost:4200",
-    wsAPIURL: "wss://in-ws-api.id.test.unwallet.dev",
+    frontend: {
+      baseURL: "http://localhost:4200",
+    },
+    xapi: {
+      url: "wss://xapi.id.test.unwallet.dev",
+    },
   },
 };

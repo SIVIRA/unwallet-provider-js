@@ -319,7 +319,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   protected connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.unWalletConfig.wsAPIURL);
+      this.ws = new WebSocket(this.unWalletConfig.xapi.url);
       this.ws.onerror = (event) => {
         reject("websocket connection failed");
       };
@@ -460,7 +460,7 @@ export class UnWalletProvider implements Eip1193Provider {
     const left = screen.width / 4;
     const top = 0;
 
-    const url = new URL(`${this.unWalletConfig.baseURL}${path}`);
+    const url = new URL(`${this.unWalletConfig.frontend.baseURL}${path}`);
     url.searchParams.set("connectionID", this.connectionId!);
     if (params !== undefined) {
       for (const key of Object.keys(params)) {

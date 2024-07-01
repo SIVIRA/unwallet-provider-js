@@ -1,13 +1,13 @@
 # unWallet provider
 
-:warning: Works fine only on browsers
+:warning: This SDK works correctly only on web browsers.
 
 ## Installation
 
-```sh
-$ npm install unwallet-provider
+```
+npm install unwallet-provider
 ```
 
-## Documentation
+## Usage
 
 See [unWallet developer documents](https://developers.unwallet.world/en/latest/unwallet-provider.html).

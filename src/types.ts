@@ -50,8 +50,16 @@ export interface Eip3326SwitchEthereumChainParameter {
 }
 
 export interface UnWalletConfig {
+  frontend: UnWalletFrontendConfig;
+  xapi: UnWalletXAPIConfig;
+}
+
+export interface UnWalletFrontendConfig {
   baseURL: string;
-  wsAPIURL: string;
+}
+
+export interface UnWalletXAPIConfig {
+  url: string;
 }
 
 export interface RpcConfig {

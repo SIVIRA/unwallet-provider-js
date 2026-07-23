@@ -5,16 +5,12 @@
   "license": "MIT",
   "author": "SIVIRA",
   "main": "dist/index.js",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git://github.com/SIVIRA/unwallet-provider-js.git"
   },
   "scripts": {
-    "build": "tsc",
-    "commit": "czg",
-    "prepare": "husky",
-    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' mocha -r ts-node/register test/**/*.ts"
+    "prepare": "husky"
   },
   "dependencies": {
     "@ethersproject/abstract-provider": "5.7.0",

@@ -5,7 +5,6 @@
   "license": "MIT",
   "author": "SIVIRA",
   "main": "dist/index.js",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git://github.com/SIVIRA/unwallet-provider-js.git"

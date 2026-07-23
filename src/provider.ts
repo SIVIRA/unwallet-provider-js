@@ -191,10 +191,12 @@ export class UnWalletProvider implements Eip1193Provider {
             return;
 
           case "eth_signTransaction":
-            const err = providerRpcErrorUnsupported;
-            err.message +=
-              " (see https://github.com/MetaMask/metamask-extension/issues/2506#issuecomment-388575922)";
-            reject(err);
+            reject({
+              ...providerRpcErrorUnsupported,
+              message:
+                providerRpcErrorUnsupported.message +
+                " (see https://github.com/MetaMask/metamask-extension/issues/2506#issuecomment-388575922)",
+            });
             return;
 
           case "eth_sendTransaction":

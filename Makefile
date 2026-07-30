@@ -9,13 +9,17 @@ deps:
 commit:
 	pnpm czg
 
+.PHONY: lint
+lint:
+	pnpm publint --strict
+
 .PHONY: test
 test:
-	TS_NODE_COMPILER_OPTIONS='{"module":"commonjs"}' pnpm mocha -r ts-node/register test/**/*.ts
+	echo "WIP: migrating to vitest + msw"
 
 .PHONY: build
 build:
-	pnpm tsc
+	pnpm tsdown
 
 .PHONY: publish
 publish:

@@ -4,10 +4,29 @@
   "description": "unWallet provider",
   "license": "MIT",
   "author": "SIVIRA",
-  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "type": "module",
   "repository": {
     "type": "git",
-    "url": "git://github.com/SIVIRA/unwallet-provider-js.git"
+    "url": "git+https://github.com/SIVIRA/unwallet-provider-js.git"
   },
   "scripts": {
     "prepare": "husky"
@@ -23,6 +42,7 @@
     "@commitlint/cli": "21.2.1",
     "@commitlint/config-conventional": "21.2.0",
     "@commitlint/types": "21.2.0",
+    "@tsconfig/strictest": "2.0.8",
     "@types/chai": "4.3.16",
     "@types/mocha": "10.0.7",
     "@types/node": "20.14.9",
@@ -31,8 +51,8 @@
     "ganache": "7.9.2",
     "husky": "9.1.7",
     "mocha": "10.5.2",
-    "ts-node": "10.9.2",
-    "typescript": "5.5.2"
+    "publint": "0.3.22",
+    "tsdown": "0.22.14"
   },
   "packageManager": "pnpm@11.18.0"
 }

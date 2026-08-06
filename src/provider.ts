@@ -3,9 +3,9 @@ import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 
 import {
-  AccountsStorage,
   Config,
   Env,
+  Persistance,
   UnWalletConfig,
   getUnWalletConfigByEnv,
 } from "./config";
@@ -40,13 +40,13 @@ const signerMethods = [
 ];
 
 export class UnWalletProvider implements Eip1193Provider {
-  private readonly ACCOUNTS_STORAGE_KEY = "uw.accounts";
+  private readonly SESSION_KEY = "uw.accounts";
 
   // will be removed in v1
-  private readonly LEGACY_ACCOUNTS_STORAGE_KEY = "unwallet_accounts";
+  private readonly LEGACY_SESSION_KEY = "unwallet_accounts";
 
   private readonly env: Env;
-  private readonly accountsStorage: AccountsStorage;
+  private readonly persistance: Persistance;
 
   protected config: Config;
 
@@ -65,7 +65,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   constructor(config?: Config) {
     this.env = config?.env ?? "prod";
-    this.accountsStorage = config?.accountsStorage ?? "none";
+    this.persistance = config?.persistance ?? "none";
 
     this.config = config ?? {};
 
@@ -73,7 +73,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
     // will be removed in v1
     try {
-      localStorage.removeItem(this.LEGACY_ACCOUNTS_STORAGE_KEY);
+      localStorage.removeItem(this.LEGACY_SESSION_KEY);
     } catch {
       // best-effort
     }
@@ -295,9 +295,9 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected getAccountsFromStorage(): Accounts | null {
-    switch (this.accountsStorage) {
+    switch (this.persistance) {
       case "local":
-        const accountsEncoded = localStorage.getItem(this.ACCOUNTS_STORAGE_KEY);
+        const accountsEncoded = localStorage.getItem(this.SESSION_KEY);
         if (accountsEncoded === null) {
           return null;
         }
@@ -314,10 +314,10 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected setAccountsInStorage(accounts: Accounts): void {
-    switch (this.accountsStorage) {
+    switch (this.persistance) {
       case "local":
         localStorage.setItem(
-          this.ACCOUNTS_STORAGE_KEY,
+          this.SESSION_KEY,
           JSON.stringify({
             chainId: accounts.chainId.toHexString(),
             addresses: accounts.addresses,
@@ -330,9 +330,9 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected removeAccountsFromStorage(): void {
-    switch (this.accountsStorage) {
+    switch (this.persistance) {
       case "local":
-        localStorage.removeItem(this.ACCOUNTS_STORAGE_KEY);
+        localStorage.removeItem(this.SESSION_KEY);
         return;
       case "none":
         return;

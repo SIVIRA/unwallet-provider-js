@@ -1,11 +1,11 @@
 export type Env = "prod" | "dev";
 
-export type AccountsStorage = "local" | "none";
+export type Persistance = "local" | "none";
 
 export interface Config {
   env?: Env;
+  persistance?: Persistance;
   rpc?: RPCConfig;
-  accountsStorage?: AccountsStorage;
 }
 
 export interface RPCConfig {

@@ -1,6 +1,6 @@
 export {
   type Env,
-  type AccountsStorage,
+  type Persistance,
   type Config,
   type RPCConfig,
 } from "./config";

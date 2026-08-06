@@ -5,7 +5,7 @@ import { EventEmitter } from "events";
 import {
   Config,
   Env,
-  Persistance,
+  Persistence,
   UnWalletConfig,
   getUnWalletConfigByEnv,
 } from "./config";
@@ -40,13 +40,13 @@ const signerMethods = [
 ];
 
 export class UnWalletProvider implements Eip1193Provider {
-  private readonly SESSION_KEY = "uw.accounts";
+  private readonly SESSION_KEY = "uw.session";
 
   // will be removed in v1
   private readonly LEGACY_SESSION_KEY = "unwallet_accounts";
 
   private readonly env: Env;
-  private readonly persistance: Persistance;
+  private readonly persistence: Persistence;
 
   protected config: Config;
 
@@ -65,7 +65,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   constructor(config?: Config) {
     this.env = config?.env ?? "prod";
-    this.persistance = config?.persistance ?? "none";
+    this.persistence = config?.persistence ?? "none";
 
     this.config = config ?? {};
 
@@ -295,7 +295,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected getAccountsFromStorage(): Accounts | null {
-    switch (this.persistance) {
+    switch (this.persistence) {
       case "local":
         const accountsEncoded = localStorage.getItem(this.SESSION_KEY);
         if (accountsEncoded === null) {
@@ -314,7 +314,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected setAccountsInStorage(accounts: Accounts): void {
-    switch (this.persistance) {
+    switch (this.persistence) {
       case "local":
         localStorage.setItem(
           this.SESSION_KEY,
@@ -330,7 +330,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected removeAccountsFromStorage(): void {
-    switch (this.persistance) {
+    switch (this.persistence) {
       case "local":
         localStorage.removeItem(this.SESSION_KEY);
         return;

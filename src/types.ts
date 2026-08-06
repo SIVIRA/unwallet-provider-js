@@ -19,11 +19,6 @@ export interface Eip1193ProviderConnectInfo {
   readonly chainId: string;
 }
 
-export interface Eip1193ProviderRpcError extends Error {
-  code: number;
-  data?: unknown;
-}
-
 export interface Eip1193ProviderMessage {
   readonly type: string;
   readonly data: unknown;

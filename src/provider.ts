@@ -2,7 +2,13 @@ import { ethers } from "ethers";
 import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 
-import { unWalletConfigs } from "./configs";
+import {
+  AccountsStorage,
+  Config,
+  Env,
+  UnWalletConfig,
+  getUnWalletConfigByEnv,
+} from "./config";
 import {
   providerRpcErrorRejected,
   providerRpcErrorUnsupported,
@@ -10,7 +16,6 @@ import {
 } from "./errors";
 import {
   Accounts,
-  Config,
   Eip712TypedData,
   Eip1193EventType,
   Eip1193Provider,
@@ -18,7 +23,6 @@ import {
   Eip1193RequestArguments,
   Eip3326SwitchEthereumChainParameter,
   JsonRpcProvider,
-  UnWalletConfig,
 } from "./types";
 import { WindowOpener } from "./window-opener";
 
@@ -36,10 +40,15 @@ const signerMethods = [
 ];
 
 export class UnWalletProvider implements Eip1193Provider {
-  protected ACCOUNTS_CACHE_KEY = "unwallet_accounts";
+  private readonly ACCOUNTS_STORAGE_KEY = "uw.accounts";
+
+  // will be removed in v1
+  private readonly LEGACY_ACCOUNTS_STORAGE_KEY = "unwallet_accounts";
+
+  private readonly env: Env;
+  private readonly accountsStorage: AccountsStorage;
 
   protected config: Config;
-  protected unWalletConfig: UnWalletConfig;
 
   protected eventEmitter: EventEmitter;
   protected signerMethods: string[] = signerMethods;
@@ -55,29 +64,21 @@ export class UnWalletProvider implements Eip1193Provider {
   protected windowOpener: WindowOpener | null = null;
 
   constructor(config?: Config) {
-    if (config === undefined) {
-      config = {};
-    }
+    this.env = config?.env ?? "prod";
+    this.accountsStorage = config?.accountsStorage ?? "none";
 
-    if (config.env === undefined) {
-      config.env = "prod";
-    }
-    if (config.allowAccountsCaching === undefined) {
-      config.allowAccountsCaching = false;
-    }
-
-    if (!(config.env in unWalletConfigs)) {
-      throw new Error("invalid env");
-    }
-
-    this.config = config;
-    this.unWalletConfig = unWalletConfigs[config.env!];
+    this.config = config ?? {};
 
     this.eventEmitter = new EventEmitter();
 
-    if (config.allowAccountsCaching) {
-      this.accounts = this.getAccountsCache();
+    // will be removed in v1
+    try {
+      localStorage.removeItem(this.LEGACY_ACCOUNTS_STORAGE_KEY);
+    } catch {
+      // best-effort
     }
+
+    this.accounts = this.getAccountsFromStorage();
 
     this.initPromiseArgs();
     this.initWindowOpener();
@@ -94,6 +95,10 @@ export class UnWalletProvider implements Eip1193Provider {
     }
 
     this.windowOpener = new WindowOpener();
+  }
+
+  private get unWalletConfig(): UnWalletConfig {
+    return getUnWalletConfigByEnv(this.env);
   }
 
   public request<T = unknown>(args: Eip1193RequestArguments): Promise<T> {
@@ -218,7 +223,7 @@ export class UnWalletProvider implements Eip1193Provider {
                 await this.connect();
               }
               const params = this.parseWalletSwitchEthereumChainParams(
-                args.params
+                args.params,
               );
 
               const chainId = ethers.BigNumber.from(params[0].chainId);
@@ -250,8 +255,8 @@ export class UnWalletProvider implements Eip1193Provider {
       resolve(
         await this.jsonRpcProvider.send(
           args.method,
-          args.params ? (args.params as any) : []
-        )
+          args.params ? (args.params as any) : [],
+        ),
       );
     });
   }
@@ -264,7 +269,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   public async disable(): Promise<void> {
     this.disconnect();
-    this.removeAccountsCache();
+    this.removeAccountsFromStorage();
     this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
@@ -275,9 +280,7 @@ export class UnWalletProvider implements Eip1193Provider {
   protected setAccounts(accounts: Accounts): void {
     this.accounts = accounts;
     this.setJsonRpcProvider(accounts.chainId);
-    if (this.config.allowAccountsCaching) {
-      this.setAccountsCache(accounts);
-    }
+    this.setAccountsInStorage(accounts);
   }
 
   protected setJsonRpcProvider(chainId: ethers.BigNumber): void {
@@ -287,41 +290,58 @@ export class UnWalletProvider implements Eip1193Provider {
     }
 
     this.jsonRpcProvider = new JsonRpcProvider(
-      this.config.rpc[chainId.toNumber()]
+      this.config.rpc[chainId.toNumber()],
     );
   }
 
-  protected getAccountsCache(): Accounts | null {
-    const accountsEncoded = localStorage.getItem(this.ACCOUNTS_CACHE_KEY);
-    if (accountsEncoded === null) {
-      return null;
+  protected getAccountsFromStorage(): Accounts | null {
+    switch (this.accountsStorage) {
+      case "local":
+        const accountsEncoded = localStorage.getItem(this.ACCOUNTS_STORAGE_KEY);
+        if (accountsEncoded === null) {
+          return null;
+        }
+
+        const accounts = JSON.parse(accountsEncoded);
+
+        return {
+          chainId: ethers.BigNumber.from(accounts.chainId),
+          addresses: accounts.addresses,
+        };
+      case "none":
+        return null;
     }
-
-    const accounts = JSON.parse(accountsEncoded);
-
-    return {
-      chainId: ethers.BigNumber.from(accounts.chainId),
-      addresses: accounts.addresses,
-    };
   }
 
-  protected setAccountsCache(accounts: Accounts): void {
-    localStorage.setItem(
-      this.ACCOUNTS_CACHE_KEY,
-      JSON.stringify({
-        chainId: accounts.chainId.toHexString(),
-        addresses: accounts.addresses,
-      })
-    );
+  protected setAccountsInStorage(accounts: Accounts): void {
+    switch (this.accountsStorage) {
+      case "local":
+        localStorage.setItem(
+          this.ACCOUNTS_STORAGE_KEY,
+          JSON.stringify({
+            chainId: accounts.chainId.toHexString(),
+            addresses: accounts.addresses,
+          }),
+        );
+        return;
+      case "none":
+        return;
+    }
   }
 
-  protected removeAccountsCache(): void {
-    localStorage.removeItem(this.ACCOUNTS_CACHE_KEY);
+  protected removeAccountsFromStorage(): void {
+    switch (this.accountsStorage) {
+      case "local":
+        localStorage.removeItem(this.ACCOUNTS_STORAGE_KEY);
+        return;
+      case "none":
+        return;
+    }
   }
 
   protected connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.unWalletConfig.xapi.url);
+      this.ws = new WebSocket(this.unWalletConfig.xAPI.url);
       this.ws.onerror = (event) => {
         reject("websocket connection failed");
       };
@@ -383,7 +403,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected ethSendTransaction(
-    transaction: ethers.providers.TransactionRequest
+    transaction: ethers.providers.TransactionRequest,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
@@ -396,7 +416,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected walletSwitchEthereumChain(
-    chainId: ethers.BigNumber
+    chainId: ethers.BigNumber,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
@@ -481,20 +501,20 @@ export class UnWalletProvider implements Eip1193Provider {
 
   public on(
     eventType: Eip1193EventType,
-    listener: (...args: any[]) => void
+    listener: (...args: any[]) => void,
   ): void {
     this.eventEmitter.on(eventType, listener);
   }
 
   public removeListener(
     eventType: Eip1193EventType,
-    listener: (...args: any[]) => void
+    listener: (...args: any[]) => void,
   ): void {
     this.eventEmitter.removeListener(eventType, listener);
   }
 
   protected parsePersonalSignParams(
-    params?: object | readonly unknown[]
+    params?: object | readonly unknown[],
   ): [string, string] {
     if (params === undefined) {
       throw new Error("params undefined");
@@ -513,7 +533,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected parseEthSignParams(
-    params?: object | readonly unknown[]
+    params?: object | readonly unknown[],
   ): [string, string] {
     if (params === undefined) {
       throw new Error("params undefined");
@@ -532,7 +552,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected parseEthSignTypedDataParams(
-    params?: object | readonly unknown[]
+    params?: object | readonly unknown[],
   ): [string, Eip712TypedData] {
     if (params === undefined) {
       throw new Error("params undefined");
@@ -559,7 +579,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected parseEthSignTypedDataV4Params(
-    params?: object | readonly unknown[]
+    params?: object | readonly unknown[],
   ): [string, string] {
     if (params === undefined) {
       throw new Error("params undefined");
@@ -594,7 +614,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected parseEthSendTransactionParams(
-    params?: object | readonly unknown[]
+    params?: object | readonly unknown[],
   ): [TransactionRequest] {
     if (params === undefined) {
       throw new Error("params undefined");
@@ -621,7 +641,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected parseWalletSwitchEthereumChainParams(
-    params?: object | readonly unknown[]
+    params?: object | readonly unknown[],
   ): [Eip3326SwitchEthereumChainParameter] {
     if (params === undefined) {
       throw new Error("params undefined");

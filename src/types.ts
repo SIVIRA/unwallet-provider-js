@@ -41,35 +41,12 @@ export interface Eip1193Provider {
   on(eventType: Eip1193EventType, listener: (...args: any[]) => void): void;
   removeListener(
     eventType: Eip1193EventType,
-    listener: (...args: any[]) => void
+    listener: (...args: any[]) => void,
   ): void;
 }
 
 export interface Eip3326SwitchEthereumChainParameter {
   chainId: string;
-}
-
-export interface UnWalletConfig {
-  frontend: UnWalletFrontendConfig;
-  xapi: UnWalletXAPIConfig;
-}
-
-export interface UnWalletFrontendConfig {
-  baseURL: string;
-}
-
-export interface UnWalletXAPIConfig {
-  url: string;
-}
-
-export interface RpcConfig {
-  [chainId: number]: string;
-}
-
-export interface Config {
-  env?: string;
-  rpc?: RpcConfig;
-  allowAccountsCaching?: boolean;
 }
 
 export interface Accounts {

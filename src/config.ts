@@ -1,15 +1,18 @@
 export type Env = "prod" | "dev";
 
-export type Persistance = "local" | "none";
+export type Persistence = "local" | "none";
 
 export interface Config {
   env?: Env;
-  persistance?: Persistance;
-  rpc?: RPCConfig;
+  persistence?: Persistence;
+  initialChainID?: number;
+  publicRPC?: PublicRPCConfig;
 }
 
-export interface RPCConfig {
-  [chainID: number]: string;
+export interface PublicRPCConfig {
+  [chainID: number]: {
+    url: string;
+  };
 }
 
 export interface UnWalletConfig {

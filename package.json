@@ -36,7 +36,9 @@
     "@ethersproject/abstract-signer": "5.7.0",
     "ethers": "5.7.2",
     "events": "3.3.0",
-    "utf-8-validate": "5.0.10"
+    "utf-8-validate": "5.0.10",
+    "viem": "2.55.11",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.1",

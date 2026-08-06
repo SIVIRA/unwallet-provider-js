@@ -1,7 +1,7 @@
 export {
   type Env,
-  type Persistance,
+  type Persistence,
   type Config,
-  type RPCConfig,
+  type PublicRPCConfig,
 } from "./config";
-export { UnWalletProvider } from "./provider";
+export { UnWalletProvider } from "./unwallet";

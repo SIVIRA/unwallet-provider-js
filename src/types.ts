@@ -1,8 +1,8 @@
-import { ethers } from "ethers";
 import {
   TypedDataDomain,
   TypedDataField,
 } from "@ethersproject/abstract-signer";
+import { Hex } from "viem";
 
 export interface Eip712TypedData {
   domain: TypedDataDomain;
@@ -46,12 +46,5 @@ export interface Eip1193Provider {
 }
 
 export interface Eip3326SwitchEthereumChainParameter {
-  chainId: string;
+  chainId: Hex;
 }
-
-export interface Accounts {
-  chainId: ethers.BigNumber;
-  addresses: string[];
-}
-
-export class JsonRpcProvider extends ethers.providers.JsonRpcProvider {}

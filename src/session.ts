@@ -3,15 +3,17 @@ import { isAddress } from "viem";
 
 import { Persistence } from "./config";
 
-export const sessionSchema = z.object({
-  chainID: z.number().int().positive(),
-  addresses: z.array(
-    z.string().refine((val) => isAddress(val), {
-      abort: true,
-      error: "Invalid EVM address",
-    }),
-  ),
-});
+export const sessionSchema = z
+  .object({
+    chainID: z.number().int().positive(),
+    addresses: z.array(
+      z.string().refine((val) => isAddress(val), {
+        abort: true,
+        error: "Invalid EVM address",
+      }),
+    ),
+  })
+  .readonly();
 
 export const sessionPayloadSchema = z
   .string()

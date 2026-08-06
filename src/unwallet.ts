@@ -19,12 +19,8 @@ import {
   UnWalletConfig,
   getUnWalletConfigByEnv,
 } from "./config";
-import {
-  UWError,
-  providerRpcErrorRejected,
-  providerRpcErrorUnsupported,
-  providerRpcErrorDisconnected,
-} from "./error";
+import { EIP1193ProviderRPCError } from "./eip1193";
+import { UWError } from "./error";
 import { Network } from "./network";
 import { SessionManager } from "./session";
 import {
@@ -187,7 +183,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
           case "eth_chainId":
             if (this.network === null) {
-              reject(providerRpcErrorDisconnected);
+              reject(EIP1193ProviderRPCError.disconnected());
               return;
             }
 
@@ -252,19 +248,22 @@ export class UnWalletProvider implements Eip1193Provider {
                 account: params[0],
                 data: params[1],
               });
-              resolve(sig as any);
+              resolve(sig as T);
             } catch (e) {
               reject(e);
             }
             return;
 
           case "eth_signTransaction":
-            reject({
-              ...providerRpcErrorUnsupported,
-              message:
-                providerRpcErrorUnsupported.message +
-                " (see https://github.com/MetaMask/metamask-extension/issues/2506#issuecomment-388575922)",
-            });
+            reject(
+              EIP1193ProviderRPCError.unsupportedMethod(
+                "the provider does not support eth_signTransaction; use eth_sendTransaction instead",
+                {
+                  reference:
+                    "https://github.com/MetaMask/metamask-extension/issues/2506#issuecomment-388575922",
+                },
+              ),
+            );
             return;
 
           case "eth_sendTransaction":
@@ -310,13 +309,21 @@ export class UnWalletProvider implements Eip1193Provider {
             return;
 
           default:
-            reject(providerRpcErrorUnsupported);
+            reject(
+              EIP1193ProviderRPCError.unsupportedMethod(
+                `the provider does not support ${args.method}`,
+              ),
+            );
             return;
         }
       }
 
-      if (this.network === null || this.network.publicRPCClient === null) {
-        reject("provider RPC URL not found");
+      if (this.network === null) {
+        reject(EIP1193ProviderRPCError.disconnected());
+        return;
+      }
+      if (this.network.publicRPCClient === null) {
+        reject(EIP1193ProviderRPCError.chainDisconnected());
         return;
       }
 
@@ -338,7 +345,10 @@ export class UnWalletProvider implements Eip1193Provider {
   public async disable(): Promise<void> {
     this.disconnect();
     this.sessionManager.remove();
-    this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
+    this.eventEmitter.emit(
+      "disconnect",
+      EIP1193ProviderRPCError.disconnected(),
+    );
   }
 
   protected isConnected(): boolean {
@@ -479,7 +489,7 @@ export class UnWalletProvider implements Eip1193Provider {
       case "error":
         switch (msg.value) {
           case "rejected":
-            this.reject!(providerRpcErrorRejected);
+            this.reject!(EIP1193ProviderRPCError.userRejectedRequest());
             break;
 
           default:

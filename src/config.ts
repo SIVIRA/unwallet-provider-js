@@ -10,9 +10,11 @@ export interface Config {
 }
 
 export interface PublicRPCConfig {
-  [chainID: number]: {
-    url: string;
-  };
+  [chainID: number]: PublicRPCClientConfig;
+}
+
+export interface PublicRPCClientConfig {
+  url: string;
 }
 
 export interface UnWalletConfig {

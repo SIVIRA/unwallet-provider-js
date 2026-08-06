@@ -3,7 +3,6 @@ import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 import {
   Address,
-  PublicClient,
   createPublicClient,
   fromHex,
   http,
@@ -26,6 +25,7 @@ import {
   providerRpcErrorUnsupported,
   providerRpcErrorDisconnected,
 } from "./error";
+import { Network } from "./network";
 import { SessionManager } from "./session";
 import {
   Eip712TypedData,
@@ -78,7 +78,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   private readonly sessionManager: SessionManager;
 
-  private chainID: number | null;
+  private network: Network | null = null;
   private addresses: Address[];
 
   protected eventEmitter: EventEmitter;
@@ -93,8 +93,10 @@ export class UnWalletProvider implements Eip1193Provider {
   protected windowOpener: WindowOpener | null = null;
 
   constructor(config?: Config) {
+    const initialChainID = config?.initialChainID ?? null;
+
     this.env = config?.env ?? "prod";
-    this.initialChainID = config?.initialChainID ?? null;
+    this.initialChainID = initialChainID;
     this.publicRPCConfig = config?.publicRPC ?? {};
 
     this.sessionManager = new SessionManager({
@@ -104,7 +106,9 @@ export class UnWalletProvider implements Eip1193Provider {
 
     const session = this.sessionManager.load();
 
-    this.chainID = session?.chainID ?? this.initialChainID;
+    const chainID = session?.chainID ?? initialChainID;
+
+    this.setUpNetwork(chainID);
     this.addresses = session?.addresses ?? [];
 
     this.eventEmitter = new EventEmitter();
@@ -113,23 +117,27 @@ export class UnWalletProvider implements Eip1193Provider {
     this.initWindowOpener();
   }
 
-  private get unWalletConfig(): UnWalletConfig {
+  private get uwConfig(): UnWalletConfig {
     return getUnWalletConfigByEnv(this.env);
   }
 
-  private get publicRPCClient(): PublicClient | null {
-    if (this.chainID === null) {
-      return null;
+  private setUpNetwork(chainID: number | null): void {
+    if (chainID === null) {
+      this.network = null;
+      return;
     }
 
-    const config = this.publicRPCConfig[this.chainID];
-    if (config === undefined) {
-      return null;
-    }
+    const publicRPCClientConfig = this.publicRPCConfig[chainID];
 
-    return createPublicClient({
-      transport: http(config.url),
-    });
+    this.network = {
+      chainID,
+      publicRPCClient:
+        publicRPCClientConfig !== undefined
+          ? createPublicClient({
+              transport: http(publicRPCClientConfig.url),
+            })
+          : null,
+    };
   }
 
   protected initPromiseArgs(): void {
@@ -155,7 +163,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
               const resp = await this.requestAccounts();
 
-              this.chainID = resp.chainID;
+              this.setUpNetwork(resp.chainID);
               this.addresses = resp.addresses;
 
               this.sessionManager.save({
@@ -167,23 +175,23 @@ export class UnWalletProvider implements Eip1193Provider {
                 chainId: toHex(resp.chainID),
               } satisfies Eip1193ProviderConnectInfo);
 
-              resolve(resp.addresses as any);
+              resolve(resp.addresses as T);
             } catch (e) {
               reject(e);
             }
             return;
 
           case "eth_accounts":
-            resolve(this.addresses as any);
+            resolve(this.addresses as T);
             return;
 
           case "eth_chainId":
-            if (this.chainID === null) {
+            if (this.network === null) {
               reject(providerRpcErrorDisconnected);
               return;
             }
 
-            resolve(toHex(this.chainID) as any);
+            resolve(toHex(this.network.chainID) as T);
             return;
 
           case "personal_sign":
@@ -196,7 +204,7 @@ export class UnWalletProvider implements Eip1193Provider {
                 account: params[1],
                 message: params[0],
               });
-              resolve(sig as any);
+              resolve(sig as T);
             } catch (e) {
               reject(e);
             }
@@ -212,7 +220,7 @@ export class UnWalletProvider implements Eip1193Provider {
                 account: params[0],
                 message: params[1],
               });
-              resolve(sig as any);
+              resolve(sig as T);
             } catch (e) {
               reject(e);
             }
@@ -228,7 +236,7 @@ export class UnWalletProvider implements Eip1193Provider {
                 account: params[0],
                 data: JSON.stringify(params[1]),
               });
-              resolve(sig as any);
+              resolve(sig as T);
             } catch (e) {
               reject(e);
             }
@@ -266,7 +274,7 @@ export class UnWalletProvider implements Eip1193Provider {
               }
               const params = this.parseEthSendTransactionParams(args.params);
               const txHash = await this.ethSendTransaction(params[0]);
-              resolve(txHash as any);
+              resolve(txHash as T);
             } catch (e) {
               reject(e);
             }
@@ -286,7 +294,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
               await this.walletSwitchEthereumChain(chainId);
 
-              this.chainID = chainId;
+              this.setUpNetwork(chainId);
 
               this.sessionManager.save({
                 chainID: chainId,
@@ -295,7 +303,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
               this.eventEmitter.emit("chainChanged", toHex(chainId));
 
-              resolve(null as any);
+              resolve(null as T);
             } catch (e) {
               reject(e);
             }
@@ -307,16 +315,16 @@ export class UnWalletProvider implements Eip1193Provider {
         }
       }
 
-      if (this.publicRPCClient === null) {
+      if (this.network === null || this.network.publicRPCClient === null) {
         reject("provider RPC URL not found");
         return;
       }
 
       resolve(
-        (await this.publicRPCClient.request<{ ReturnType: unknown }>({
+        await this.network.publicRPCClient.request<{ ReturnType: T }>({
           method: args.method,
           params: args.params ?? [],
-        })) as any,
+        }),
       );
     });
   }
@@ -339,7 +347,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   protected connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.unWalletConfig.xAPI.url);
+      this.ws = new WebSocket(this.uwConfig.xAPI.url);
       this.ws.onerror = (event) => {
         reject("websocket connection failed");
       };
@@ -359,7 +367,7 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected disconnect(): void {
-    this.chainID = this.initialChainID;
+    this.setUpNetwork(this.initialChainID);
     this.addresses = [];
 
     this.ws = null;
@@ -492,7 +500,7 @@ export class UnWalletProvider implements Eip1193Provider {
     const left = screen.width / 4;
     const top = 0;
 
-    const url = new URL(`${this.unWalletConfig.frontend.baseURL}${path}`);
+    const url = new URL(`${this.uwConfig.frontend.baseURL}${path}`);
     url.searchParams.set("connectionID", this.connectionId!);
     if (params !== undefined) {
       for (const key of Object.keys(params)) {

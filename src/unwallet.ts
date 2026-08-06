@@ -72,9 +72,6 @@ type EthRequestAccountsResponse = z.infer<
 >;
 
 export class UnWalletProvider implements Eip1193Provider {
-  private readonly sessionKey = "uw.session";
-  private readonly legacySessionKey = "unwallet_accounts"; // will be removed in v1
-
   private readonly env: Env;
   private readonly initialChainID: number | null;
   private readonly publicRPCConfig: PublicRPCConfig;
@@ -101,8 +98,8 @@ export class UnWalletProvider implements Eip1193Provider {
     this.publicRPCConfig = config?.publicRPC ?? {};
 
     this.sessionManager = new SessionManager({
-      key: this.sessionKey,
       persistence: config?.persistence ?? "none",
+      onPersistenceError: config?.onPersistenceError,
     });
 
     const session = this.sessionManager.load();
@@ -111,21 +108,6 @@ export class UnWalletProvider implements Eip1193Provider {
     this.addresses = session?.addresses ?? [];
 
     this.eventEmitter = new EventEmitter();
-
-    if (this.sessionManager.persistence === "none") {
-      try {
-        localStorage.removeItem(this.sessionKey);
-      } catch {
-        // best-effort
-      }
-    }
-
-    // will be removed in v1
-    try {
-      localStorage.removeItem(this.legacySessionKey);
-    } catch {
-      // best-effort
-    }
 
     this.initPromiseArgs();
     this.initWindowOpener();

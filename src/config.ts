@@ -1,10 +1,10 @@
 export type Env = "prod" | "dev";
-
 export type Persistence = "local" | "none";
 
 export interface Config {
   env?: Env;
   persistence?: Persistence;
+  onPersistenceError?: (err: unknown) => void;
   initialChainID?: number;
   publicRPC?: PublicRPCConfig;
 }

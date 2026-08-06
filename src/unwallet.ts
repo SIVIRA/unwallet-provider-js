@@ -1,28 +1,39 @@
 import { ethers } from "ethers";
 import { TransactionRequest } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
+import {
+  Address,
+  PublicClient,
+  createPublicClient,
+  fromHex,
+  http,
+  isAddress,
+  isHex,
+  toHex,
+} from "viem";
+import { z } from "zod";
 
 import {
   Config,
   Env,
-  Persistence,
+  PublicRPCConfig,
   UnWalletConfig,
   getUnWalletConfigByEnv,
 } from "./config";
 import {
+  UWError,
   providerRpcErrorRejected,
   providerRpcErrorUnsupported,
   providerRpcErrorDisconnected,
-} from "./errors";
+} from "./error";
+import { SessionManager } from "./session";
 import {
-  Accounts,
   Eip712TypedData,
   Eip1193EventType,
   Eip1193Provider,
   Eip1193ProviderConnectInfo,
   Eip1193RequestArguments,
   Eip3326SwitchEthereumChainParameter,
-  JsonRpcProvider,
 } from "./types";
 import { WindowOpener } from "./window-opener";
 
@@ -39,24 +50,42 @@ const signerMethods = [
   "wallet_switchEthereumChain",
 ];
 
+const ethRequestAccountsResponseSchema = z.object({
+  chainID: z
+    .string()
+    .refine((val) => isHex(val), {
+      abort: true,
+      error: "Invalid hex string",
+    })
+    .transform((val) => fromHex(val, "number"))
+    .pipe(z.number().int().positive()),
+  addresses: z.array(
+    z.string().refine((val) => isAddress(val), {
+      abort: true,
+      error: "Invalid EVM address",
+    }),
+  ),
+});
+
+type EthRequestAccountsResponse = z.infer<
+  typeof ethRequestAccountsResponseSchema
+>;
+
 export class UnWalletProvider implements Eip1193Provider {
-  private readonly SESSION_KEY = "uw.session";
-
-  // will be removed in v1
-  private readonly LEGACY_SESSION_KEY = "unwallet_accounts";
-
   private readonly env: Env;
-  private readonly persistence: Persistence;
+  private readonly initialChainID: number | null;
+  private readonly publicRPCConfig: PublicRPCConfig;
 
-  protected config: Config;
+  private readonly sessionManager: SessionManager;
+
+  private chainID: number | null;
+  private addresses: Address[];
 
   protected eventEmitter: EventEmitter;
   protected signerMethods: string[] = signerMethods;
 
   protected ws: WebSocket | null = null;
   protected connectionId: string | null = null;
-  protected accounts: Accounts | null = null;
-  protected jsonRpcProvider: JsonRpcProvider | null = null;
 
   protected resolve: ((result: any) => void) | null = null;
   protected reject: ((reason: any) => void) | null = null;
@@ -65,23 +94,42 @@ export class UnWalletProvider implements Eip1193Provider {
 
   constructor(config?: Config) {
     this.env = config?.env ?? "prod";
-    this.persistence = config?.persistence ?? "none";
+    this.initialChainID = config?.initialChainID ?? null;
+    this.publicRPCConfig = config?.publicRPC ?? {};
 
-    this.config = config ?? {};
+    this.sessionManager = new SessionManager({
+      persistence: config?.persistence ?? "none",
+      onPersistenceError: config?.onPersistenceError,
+    });
+
+    const session = this.sessionManager.load();
+
+    this.chainID = session?.chainID ?? this.initialChainID;
+    this.addresses = session?.addresses ?? [];
 
     this.eventEmitter = new EventEmitter();
 
-    // will be removed in v1
-    try {
-      localStorage.removeItem(this.LEGACY_SESSION_KEY);
-    } catch {
-      // best-effort
-    }
-
-    this.accounts = this.getAccountsFromStorage();
-
     this.initPromiseArgs();
     this.initWindowOpener();
+  }
+
+  private get unWalletConfig(): UnWalletConfig {
+    return getUnWalletConfigByEnv(this.env);
+  }
+
+  private get publicRPCClient(): PublicClient | null {
+    if (this.chainID === null) {
+      return null;
+    }
+
+    const config = this.publicRPCConfig[this.chainID];
+    if (config === undefined) {
+      return null;
+    }
+
+    return createPublicClient({
+      transport: http(config.url),
+    });
   }
 
   protected initPromiseArgs(): void {
@@ -97,10 +145,6 @@ export class UnWalletProvider implements Eip1193Provider {
     this.windowOpener = new WindowOpener();
   }
 
-  private get unWalletConfig(): UnWalletConfig {
-    return getUnWalletConfigByEnv(this.env);
-  }
-
   public request<T = unknown>(args: Eip1193RequestArguments): Promise<T> {
     return new Promise(async (resolve, reject) => {
       if (this.signerMethods.includes(args.method)) {
@@ -109,26 +153,37 @@ export class UnWalletProvider implements Eip1193Provider {
             try {
               await this.connect();
 
-              const accounts = await this.requestAccounts();
-              this.setAccounts(accounts);
+              const resp = await this.requestAccounts();
 
-              const connectInfo: Eip1193ProviderConnectInfo = {
-                chainId: accounts.chainId.toHexString(),
-              };
-              this.eventEmitter.emit("connect", connectInfo);
+              this.chainID = resp.chainID;
+              this.addresses = resp.addresses;
 
-              resolve(accounts.addresses as any);
+              this.sessionManager.save({
+                chainID: resp.chainID,
+                addresses: resp.addresses,
+              });
+
+              this.eventEmitter.emit("connect", {
+                chainId: toHex(resp.chainID),
+              } satisfies Eip1193ProviderConnectInfo);
+
+              resolve(resp.addresses as any);
             } catch (e) {
               reject(e);
             }
             return;
 
           case "eth_accounts":
-            resolve(this.accounts?.addresses as any);
+            resolve(this.addresses as any);
             return;
 
           case "eth_chainId":
-            resolve(this.accounts?.chainId.toHexString() as any);
+            if (this.chainID === null) {
+              reject(providerRpcErrorDisconnected);
+              return;
+            }
+
+            resolve(toHex(this.chainID) as any);
             return;
 
           case "personal_sign":
@@ -222,18 +277,23 @@ export class UnWalletProvider implements Eip1193Provider {
               if (!this.isConnected()) {
                 await this.connect();
               }
+
               const params = this.parseWalletSwitchEthereumChainParams(
                 args.params,
               );
 
-              const chainId = ethers.BigNumber.from(params[0].chainId);
+              const chainId = fromHex(params[0].chainId, "number");
+
               await this.walletSwitchEthereumChain(chainId);
-              this.setAccounts({
-                chainId: chainId,
-                addresses: this.accounts!.addresses,
+
+              this.chainID = chainId;
+
+              this.sessionManager.save({
+                chainID: chainId,
+                addresses: this.addresses,
               });
 
-              this.eventEmitter.emit("chainChanged", chainId.toHexString());
+              this.eventEmitter.emit("chainChanged", toHex(chainId));
 
               resolve(null as any);
             } catch (e) {
@@ -247,16 +307,16 @@ export class UnWalletProvider implements Eip1193Provider {
         }
       }
 
-      if (!this.jsonRpcProvider) {
+      if (this.publicRPCClient === null) {
         reject("provider RPC URL not found");
         return;
       }
 
       resolve(
-        await this.jsonRpcProvider.send(
-          args.method,
-          args.params ? (args.params as any) : [],
-        ),
+        (await this.publicRPCClient.request<{ ReturnType: unknown }>({
+          method: args.method,
+          params: args.params ?? [],
+        })) as any,
       );
     });
   }
@@ -269,74 +329,12 @@ export class UnWalletProvider implements Eip1193Provider {
 
   public async disable(): Promise<void> {
     this.disconnect();
-    this.removeAccountsFromStorage();
+    this.sessionManager.remove();
     this.eventEmitter.emit("disconnect", providerRpcErrorDisconnected);
   }
 
   protected isConnected(): boolean {
     return this.ws !== null && this.connectionId !== null;
-  }
-
-  protected setAccounts(accounts: Accounts): void {
-    this.accounts = accounts;
-    this.setJsonRpcProvider(accounts.chainId);
-    this.setAccountsInStorage(accounts);
-  }
-
-  protected setJsonRpcProvider(chainId: ethers.BigNumber): void {
-    if (!this.config.rpc || !(chainId.toNumber() in this.config.rpc)) {
-      this.jsonRpcProvider = null;
-      return;
-    }
-
-    this.jsonRpcProvider = new JsonRpcProvider(
-      this.config.rpc[chainId.toNumber()],
-    );
-  }
-
-  protected getAccountsFromStorage(): Accounts | null {
-    switch (this.persistence) {
-      case "local":
-        const accountsEncoded = localStorage.getItem(this.SESSION_KEY);
-        if (accountsEncoded === null) {
-          return null;
-        }
-
-        const accounts = JSON.parse(accountsEncoded);
-
-        return {
-          chainId: ethers.BigNumber.from(accounts.chainId),
-          addresses: accounts.addresses,
-        };
-      case "none":
-        return null;
-    }
-  }
-
-  protected setAccountsInStorage(accounts: Accounts): void {
-    switch (this.persistence) {
-      case "local":
-        localStorage.setItem(
-          this.SESSION_KEY,
-          JSON.stringify({
-            chainId: accounts.chainId.toHexString(),
-            addresses: accounts.addresses,
-          }),
-        );
-        return;
-      case "none":
-        return;
-    }
-  }
-
-  protected removeAccountsFromStorage(): void {
-    switch (this.persistence) {
-      case "local":
-        localStorage.removeItem(this.SESSION_KEY);
-        return;
-      case "none":
-        return;
-    }
   }
 
   protected connect(): Promise<void> {
@@ -361,12 +359,14 @@ export class UnWalletProvider implements Eip1193Provider {
   }
 
   protected disconnect(): void {
+    this.chainID = this.initialChainID;
+    this.addresses = [];
+
     this.ws = null;
     this.connectionId = null;
-    this.accounts = null;
   }
 
-  protected requestAccounts(): Promise<Accounts> {
+  protected requestAccounts(): Promise<EthRequestAccountsResponse> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
@@ -410,19 +410,16 @@ export class UnWalletProvider implements Eip1193Provider {
       this.reject = reject;
       this.openWallet("/x/eth/sendTransaction", {
         transaction: JSON.stringify(transaction),
-        chainID: this.accounts!.chainId.toHexString(),
       });
     });
   }
 
-  protected walletSwitchEthereumChain(
-    chainId: ethers.BigNumber,
-  ): Promise<void> {
+  protected walletSwitchEthereumChain(chainId: number): Promise<void> {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
       this.openWallet("/x/wallet/switchEthereumChain", {
-        chainID: chainId.toHexString(),
+        chainID: toHex(chainId),
       });
     });
   }
@@ -440,10 +437,23 @@ export class UnWalletProvider implements Eip1193Provider {
   protected handleWSMessage(msg: any): void {
     switch (msg.type) {
       case "accounts":
-        this.resolve!({
-          chainId: ethers.BigNumber.from(msg.value.chainID),
-          addresses: msg.value.addresses,
-        });
+        let resp: EthRequestAccountsResponse;
+        {
+          const result = ethRequestAccountsResponseSchema.safeParse(msg.value);
+          if (!result.success) {
+            this.reject!(
+              new UWError(
+                "INVALID_RESPONSE",
+                `invalid payload: ${z.prettifyError(result.error)}`,
+              ),
+            );
+            return;
+          }
+
+          resp = result.data;
+        }
+
+        this.resolve!(resp);
         break;
 
       case "signature":

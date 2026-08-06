@@ -2,13 +2,13 @@ import { z } from "zod";
 import { isAddress } from "viem";
 
 import { Persistence } from "./config";
+import { chainIDSchema } from "./network";
 
 export const sessionSchema = z
   .object({
-    chainID: z.number().int().positive(),
+    chainID: chainIDSchema,
     addresses: z.array(
-      z.string().refine((val) => isAddress(val), {
-        abort: true,
+      z.string().refine(isAddress, {
         error: "Invalid EVM address",
       }),
     ),

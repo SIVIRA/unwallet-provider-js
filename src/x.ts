@@ -1,19 +1,11 @@
-import { fromHex, isAddress, isHex } from "viem";
+import { fromHex, isAddress, isHash, isHex } from "viem";
 import { z } from "zod";
 
 import { UnWalletXAPIConfig } from "./config";
 import { UWError } from "./error";
+import { chainIDSchema } from "./network";
 
 const X_ACTIONS = ["getConnectionID"] as const;
-
-const X_RESPONSE_TYPES = [
-  "connectionID",
-  "accounts",
-  "signature",
-  "transactionHash",
-  "null",
-  "error",
-] as const;
 
 export const xRequestSchema = z
   .object({
@@ -39,22 +31,38 @@ export const xRequestPayloadSchema = z
 export const xResponseSchema = z
   .union([
     z.object({
+      type: z.literal("connectionID"),
+      value: z.string().nonempty(),
+    }),
+    z.object({
       type: z.literal("accounts"),
       value: z.object({
         chainID: z
           .string()
-          .refine((val) => isHex(val), {
+          .nonempty()
+          .refine(isHex, {
             abort: true,
             error: "Invalid hex string",
           })
           .transform((val) => fromHex(val, "number"))
-          .pipe(z.number().int().positive()),
+          .pipe(chainIDSchema),
         addresses: z.array(
-          z.string().refine((val) => isAddress(val), {
-            abort: true,
+          z.string().refine(isAddress, {
             error: "Invalid EVM address",
           }),
         ),
+      }),
+    }),
+    z.object({
+      type: z.literal("signature"),
+      value: z.string().nonempty().refine(isHex, {
+        error: "Invalid hex string",
+      }),
+    }),
+    z.object({
+      type: z.literal("transactionHash"),
+      value: z.string().nonempty().refine(isHash, {
+        error: "Invalid hash string",
       }),
     }),
     z.object({
@@ -62,10 +70,8 @@ export const xResponseSchema = z
       value: z.null(),
     }),
     z.object({
-      type: z.enum(
-        X_RESPONSE_TYPES.filter((t) => t !== "accounts" && t !== "null"),
-      ),
-      value: z.string(),
+      type: z.literal("error"),
+      value: z.string().nonempty(),
     }),
   ])
   .readonly();
@@ -88,8 +94,6 @@ export const xResponsePayloadSchema = z
 export type XAction = (typeof X_ACTIONS)[number];
 
 export type XRequest = z.infer<typeof xRequestSchema>;
-
-export type XResponseType = (typeof X_RESPONSE_TYPES)[number];
 
 export type XResponse = z.infer<typeof xResponseSchema>;
 

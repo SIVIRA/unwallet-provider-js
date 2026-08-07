@@ -154,7 +154,7 @@ export class SessionManager {
   private handlePersistenceError(err: unknown): void {
     if (this.onPersistenceError === null) {
       console.warn(
-        "[unwallet] session persistence is not working. specify `onPersistenceError` to handle this.",
+        "[unwallet-provider] session persistence is not working. specify `onPersistenceError` to handle this.",
         err,
       );
       return;

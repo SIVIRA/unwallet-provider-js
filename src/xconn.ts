@@ -84,7 +84,7 @@ export type XRequest = z.infer<typeof xRequestSchema>;
 
 export type XResponse = z.infer<typeof xResponseSchema>;
 
-export type XResponseHandler = {
+type XResponseHandler = {
   readonly resolve: (resp: XResponse) => void;
   readonly reject: (err: UWError) => void;
 };
@@ -107,9 +107,9 @@ export class XConnection {
   private responseHandler: XResponseHandler | null = null;
 
   constructor(args: {
-    id: string;
-    socket: WebSocket;
-    debugOptions?: XConnectionDebugOptions | undefined;
+    readonly id: string;
+    readonly socket: WebSocket;
+    readonly debugOptions?: XConnectionDebugOptions | undefined;
   }) {
     this.id = args.id;
     this.socket = args.socket;

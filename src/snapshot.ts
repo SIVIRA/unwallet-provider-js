@@ -1,17 +1,13 @@
 import { z } from "zod";
-import { isAddress } from "viem";
 
 import { Persistence } from "./config";
+import { evmAddressSchema } from "./evm";
 import { chainIDSchema } from "./network";
 
 export const snapshotSchema = z
   .object({
     chainID: chainIDSchema,
-    addresses: z.array(
-      z.string().refine(isAddress, {
-        error: "Invalid EVM address",
-      }),
-    ),
+    addresses: z.array(evmAddressSchema),
   })
   .readonly();
 

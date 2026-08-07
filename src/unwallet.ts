@@ -22,7 +22,7 @@ import {
 import { EIP1193ProviderRPCError } from "./eip1193";
 import { UWError } from "./error";
 import { Network } from "./network";
-import { SessionManager } from "./session";
+import { SnapshotManager } from "./snapshot";
 import {
   Eip712TypedData,
   Eip1193EventType,
@@ -72,7 +72,7 @@ export class UnWalletProvider implements Eip1193Provider {
   private readonly initialChainID: number | null;
   private readonly publicRPCConfig: PublicRPCConfig;
 
-  private readonly sessionManager: SessionManager;
+  private readonly snapshotManager: SnapshotManager;
 
   private network: Network | null = null;
   private addresses: Address[];
@@ -95,17 +95,17 @@ export class UnWalletProvider implements Eip1193Provider {
     this.initialChainID = initialChainID;
     this.publicRPCConfig = config?.publicRPC ?? {};
 
-    this.sessionManager = new SessionManager({
+    this.snapshotManager = new SnapshotManager({
       persistence: config?.persistence ?? "none",
       onPersistenceError: config?.onPersistenceError,
     });
 
-    const session = this.sessionManager.load();
+    const snapshot = this.snapshotManager.load();
 
-    const chainID = session?.chainID ?? initialChainID;
+    const chainID = snapshot?.chainID ?? initialChainID;
 
     this.setUpNetwork(chainID);
-    this.addresses = session?.addresses ?? [];
+    this.addresses = snapshot?.addresses ?? [];
 
     this.eventEmitter = new EventEmitter();
 
@@ -162,7 +162,7 @@ export class UnWalletProvider implements Eip1193Provider {
               this.setUpNetwork(resp.chainID);
               this.addresses = resp.addresses;
 
-              this.sessionManager.save({
+              this.snapshotManager.save({
                 chainID: resp.chainID,
                 addresses: resp.addresses,
               });
@@ -295,7 +295,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
               this.setUpNetwork(chainId);
 
-              this.sessionManager.save({
+              this.snapshotManager.save({
                 chainID: chainId,
                 addresses: this.addresses,
               });
@@ -344,7 +344,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   public async disable(): Promise<void> {
     this.disconnect();
-    this.sessionManager.remove();
+    this.snapshotManager.remove();
     this.eventEmitter.emit(
       "disconnect",
       EIP1193ProviderRPCError.disconnected(),

@@ -3,7 +3,7 @@ import { isAddress } from "viem";
 
 import { Persistence } from "./config";
 
-export const sessionSchema = z
+export const snapshotSchema = z
   .object({
     chainID: z.number().int().positive(),
     addresses: z.array(
@@ -15,7 +15,7 @@ export const sessionSchema = z
   })
   .readonly();
 
-export const sessionPayloadSchema = z
+export const snapshotPayloadSchema = z
   .string()
   .transform((val, ctx) => {
     try {
@@ -28,12 +28,12 @@ export const sessionPayloadSchema = z
       return z.NEVER;
     }
   })
-  .pipe(sessionSchema);
+  .pipe(snapshotSchema);
 
-export type Session = z.infer<typeof sessionSchema>;
+export type Snapshot = z.infer<typeof snapshotSchema>;
 
-export class SessionManager {
-  private readonly key = "uw.session";
+export class SnapshotManager {
+  private readonly key = "uw.snapshot";
   private readonly legacyKey = "unwallet_accounts"; // will be removed in v1
 
   private readonly persistence: Persistence;
@@ -88,47 +88,47 @@ export class SessionManager {
     return storage;
   }
 
-  public load(): Session | null {
+  public load(): Snapshot | null {
     const storage = this.storage;
     if (storage === null) {
       return null;
     }
 
-    let sessionPayload: string | null;
+    let snapshotPayload: string | null;
     {
       try {
-        sessionPayload = storage.getItem(this.key);
+        snapshotPayload = storage.getItem(this.key);
       } catch (e) {
-        sessionPayload = null;
+        snapshotPayload = null;
         this.handlePersistenceError(e);
       }
     }
-    if (sessionPayload === null) {
+    if (snapshotPayload === null) {
       return null;
     }
 
-    let session: Session | null;
+    let snapshot: Snapshot | null;
     {
-      const result = sessionPayloadSchema.safeParse(sessionPayload);
+      const result = snapshotPayloadSchema.safeParse(snapshotPayload);
       if (result.success) {
-        session = result.data;
+        snapshot = result.data;
       } else {
-        session = null;
+        snapshot = null;
         this.remove();
       }
     }
 
-    return session;
+    return snapshot;
   }
 
-  public save(session: Session): void {
+  public save(snapshot: Snapshot): void {
     const storage = this.storage;
     if (storage === null) {
       return;
     }
 
     try {
-      storage.setItem(this.key, JSON.stringify(session));
+      storage.setItem(this.key, JSON.stringify(snapshot));
     } catch (e) {
       this.handlePersistenceError(e);
     }
@@ -154,7 +154,7 @@ export class SessionManager {
   private handlePersistenceError(err: unknown): void {
     if (this.onPersistenceError === null) {
       console.warn(
-        "[unwallet] session persistence is not working. specify `onPersistenceError` to handle this.",
+        "[unwallet] snapshot persistence is not working. specify `onPersistenceError` to handle this.",
         err,
       );
       return;

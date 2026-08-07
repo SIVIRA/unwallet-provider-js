@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 import { Persistence } from "./config";
-import { evmAddressSchema } from "./evm";
+import { addressSchema } from "./evm";
 import { chainIDSchema } from "./network";
 
 export const snapshotSchema = z
   .object({
     chainID: chainIDSchema,
-    addresses: z.array(evmAddressSchema),
+    addresses: z.array(addressSchema),
   })
   .readonly();
 

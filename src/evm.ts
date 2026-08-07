@@ -1,10 +1,14 @@
-import { isAddress, isHex } from "viem";
+import { isAddress, isHash, isHex } from "viem";
 import { z } from "zod";
 
-export const evmAddressSchema = z.string().nonempty().refine(isAddress, {
-  error: "Invalid EVM address",
+export const addressSchema = z.string().refine(isAddress, {
+  error: "Invalid address",
 });
 
-export const hexStringSchema = z.string().nonempty().refine(isHex, {
-  error: "Invalid hex string",
+export const hashSchema = z.string().refine(isHash, {
+  error: "Invalid hash",
+});
+
+export const hexSchema = z.string().refine(isHex, {
+  error: "Invalid hex",
 });

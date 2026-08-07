@@ -1,7 +1,8 @@
-import { fromHex, isAddress, isHash, isHex } from "viem";
+import { fromHex } from "viem";
 import { z } from "zod";
 
 import { UnWalletXAPIConfig } from "./config";
+import { addressSchema, hashSchema, hexSchema } from "./evm";
 import { UWError } from "./error";
 import { chainIDSchema } from "./network";
 
@@ -37,33 +38,19 @@ export const xResponseSchema = z
     z.object({
       type: z.literal("accounts"),
       value: z.object({
-        chainID: z
-          .string()
-          .nonempty()
-          .refine(isHex, {
-            abort: true,
-            error: "Invalid hex string",
-          })
+        chainID: hexSchema
           .transform((val) => fromHex(val, "number"))
           .pipe(chainIDSchema),
-        addresses: z.array(
-          z.string().refine(isAddress, {
-            error: "Invalid EVM address",
-          }),
-        ),
+        addresses: z.array(addressSchema),
       }),
     }),
     z.object({
       type: z.literal("signature"),
-      value: z.string().nonempty().refine(isHex, {
-        error: "Invalid hex string",
-      }),
+      value: hexSchema,
     }),
     z.object({
       type: z.literal("transactionHash"),
-      value: z.string().nonempty().refine(isHash, {
-        error: "Invalid hash string",
-      }),
+      value: hashSchema,
     }),
     z.object({
       type: z.literal("null"),
@@ -102,8 +89,8 @@ export type XResponseHandler = {
   readonly reject: (err: UWError) => void;
 };
 
-export type XConnectionOptions = {
-  readonly debugHandlers?: XConnectionDebugHandlers;
+export type XConnectionDebugOptions = {
+  readonly handlers?: XConnectionDebugHandlers;
 };
 
 export type XConnectionDebugHandlers = {
@@ -115,24 +102,25 @@ export class XConnection {
   public readonly id: string;
 
   private readonly socket: WebSocket;
-  private readonly options: XConnectionOptions;
+  private readonly debugOptions: XConnectionDebugOptions | null;
 
   private responseHandler: XResponseHandler | null = null;
 
   constructor(args: {
     id: string;
     socket: WebSocket;
-    options?: XConnectionOptions | undefined;
+    debugOptions?: XConnectionDebugOptions | undefined;
   }) {
     this.id = args.id;
     this.socket = args.socket;
-    this.options = args.options ?? {};
+    this.debugOptions = args.debugOptions ?? null;
     this.initListeners();
   }
 
   public static async init(
-    config: UnWalletXAPIConfig,
-    opts?: XConnectionOptions,
+    config: UnWalletXAPIConfig & {
+      readonly debug?: XConnectionDebugOptions | undefined;
+    },
   ): Promise<XConnection> {
     const socket = new WebSocket(config.url);
 
@@ -194,7 +182,7 @@ export class XConnection {
     return new XConnection({
       id,
       socket,
-      options: opts,
+      debugOptions: config.debug,
     });
   }
 
@@ -203,7 +191,7 @@ export class XConnection {
 
     this.socket.onmessage = (event) => {
       if (this.responseHandler === null) {
-        this.options.debugHandlers?.onMessageEventDropped?.(event);
+        this.debugOptions?.handlers?.onMessageEventDropped?.(event);
         return;
       }
 
@@ -242,7 +230,7 @@ export class XConnection {
 
     this.socket.onclose = (event) => {
       if (this.responseHandler === null) {
-        this.options.debugHandlers?.onCloseEventDropped?.(event);
+        this.debugOptions?.handlers?.onCloseEventDropped?.(event);
         return;
       }
 
@@ -299,7 +287,7 @@ export function newUnexpectedXResponseTypeError(resp: XResponse): UWError {
   return new UWError("INVALID_RESPONSE", msgs.join(" "));
 }
 
-export function newConnectionClosedError(event: CloseEvent): UWError {
+function newConnectionClosedError(event: CloseEvent): UWError {
   return new UWError(
     "CONNECTION_CLOSED",
     event.reason.length > 0 ? event.reason : undefined,

@@ -17,7 +17,7 @@ import {
   Env,
   PublicRPCConfig,
   UnWalletConfig,
-  getUnWalletConfigByEnv,
+  envToUnWalletConfig,
 } from "./config";
 import { EIP1193ProviderRPCError } from "./eip1193";
 import { UWError } from "./error";
@@ -113,8 +113,8 @@ export class UnWalletProvider implements Eip1193Provider {
     this.initWindowOpener();
   }
 
-  private get uwConfig(): UnWalletConfig {
-    return getUnWalletConfigByEnv(this.env);
+  private get unWalletConfig(): UnWalletConfig {
+    return envToUnWalletConfig[this.env];
   }
 
   private setUpNetwork(chainID: number | null): void {
@@ -357,7 +357,7 @@ export class UnWalletProvider implements Eip1193Provider {
 
   protected connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.uwConfig.xAPI.url);
+      this.ws = new WebSocket(this.unWalletConfig.xAPI.url);
       this.ws.onerror = (event) => {
         reject("websocket connection failed");
       };
@@ -510,7 +510,7 @@ export class UnWalletProvider implements Eip1193Provider {
     const left = screen.width / 4;
     const top = 0;
 
-    const url = new URL(`${this.uwConfig.frontend.baseURL}${path}`);
+    const url = new URL(path, this.unWalletConfig.frontend.origin);
     url.searchParams.set("connectionID", this.connectionId!);
     if (params !== undefined) {
       for (const key of Object.keys(params)) {

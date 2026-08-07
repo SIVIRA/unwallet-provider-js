@@ -1,4 +1,9 @@
-export type UWErrorCode = "INVALID_RESPONSE";
+export type UWErrorCode =
+  | "CONNECTION_TIMEOUT"
+  | "CONNECTION_FAILED"
+  | "CONNECTION_CLOSED"
+  | "REQUEST_REJECTED"
+  | "INVALID_RESPONSE";
 
 export class UWError extends Error {
   static {

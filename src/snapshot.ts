@@ -1,17 +1,13 @@
 import { z } from "zod";
-import { isAddress } from "viem";
 
 import { Persistence } from "./config";
+import { addressSchema } from "./evm";
+import { chainIDSchema } from "./network";
 
 export const snapshotSchema = z
   .object({
-    chainID: z.number().int().positive(),
-    addresses: z.array(
-      z.string().refine((val) => isAddress(val), {
-        abort: true,
-        error: "Invalid EVM address",
-      }),
-    ),
+    chainID: chainIDSchema,
+    addresses: z.array(addressSchema),
   })
   .readonly();
 
@@ -154,7 +150,7 @@ export class SnapshotManager {
   private handlePersistenceError(err: unknown): void {
     if (this.onPersistenceError === null) {
       console.warn(
-        "[unwallet] snapshot persistence is not working. specify `onPersistenceError` to handle this.",
+        "[unwallet-provider] snapshot persistence is not working. specify `onPersistenceError` to handle this.",
         err,
       );
       return;
